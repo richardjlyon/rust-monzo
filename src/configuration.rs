@@ -1,6 +1,7 @@
-use crate::client::auth::OathCredentials;
 use anyhow::{Error, Result};
 use serde::Deserialize;
+
+use crate::auth::OathCredentials;
 
 #[derive(Clone, Deserialize)]
 pub struct Settings {
@@ -23,12 +24,11 @@ pub fn get_configuration() -> Result<Settings, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use secrecy::ExposeSecret;
 
     #[test]
     fn get_configuration_works() {
         let config = get_configuration().expect("Failed to read configuration.");
 
-        assert!(config.oath_credentials.client_id.len() > 0);
+        assert!(config.oath_credentials.client_id.is_empty());
     }
 }

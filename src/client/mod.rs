@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 
 mod accounts;
-pub mod auth;
 mod balance;
 mod transactions;
 mod whoami;
