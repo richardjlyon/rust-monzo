@@ -1,4 +1,4 @@
-use super::{ErrorJson, MonzoClient};
+use super::MonzoClient;
 use anyhow::{Error, Result};
 use serde::Deserialize;
 
@@ -14,17 +14,9 @@ impl MonzoClient {
     pub async fn balance(&self, account_id: &str) -> Result<Balance, Error> {
         let url = format!("{}balance?account_id={}", self.base_url, account_id);
         let response = self.client.get(&url).send().await?;
+        let balance: Balance = Self::handle_response(response).await?;
 
-        match response.status().is_success() {
-            true => {
-                let success_json = response.json::<Balance>().await?;
-                Ok(success_json)
-            }
-            false => {
-                let error_json = response.json::<ErrorJson>().await?;
-                Err(Error::msg(format!("Error: {:?}", error_json)))
-            }
-        }
+        Ok(balance)
     }
 }
 

@@ -1,7 +1,7 @@
-use super::{ErrorJson, MonzoClient};
+use super::MonzoClient;
 use anyhow::{Error, Result};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Deserialize, Debug)]
 pub struct Transactions {
@@ -21,6 +21,32 @@ pub struct Transaction {
     pub category: String,
     pub notes: String,
     pub merchant: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct DateRange {
+    pub from: DateTime<Utc>,
+    pub to: DateTime<Utc>,
+}
+
+impl DateRange {
+    pub fn new(from: DateTime<Utc>, to: DateTime<Utc>) -> Self {
+        DateRange { from, to }
+    }
+
+    // default is 365 days ago from now
+    pub fn default() -> Self {
+        let now = Utc::now();
+        let from = now - chrono::Duration::days(365);
+        DateRange { from, to: now }
+    }
+
+    fn to_rfc3339(&self) -> (String, String) {
+        (
+            self.from.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            self.to.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        )
+    }
 }
 
 // Custom deserialization function for Option<DateTime<Utc>>
@@ -45,22 +71,15 @@ impl MonzoClient {
     pub async fn transactions(&self, account_id: &str) -> Result<Vec<Transaction>, Error> {
         let url = format!("{}transactions?account_id={}", self.base_url, account_id);
         let response = self.client.get(&url).send().await?;
+        let transactions: Transactions = Self::handle_response(response).await?;
 
-        match response.status().is_success() {
-            true => {
-                let transactions = response.json::<Transactions>().await?;
-                Ok(transactions.transactions)
-            }
-            false => {
-                let error_json = response.json::<ErrorJson>().await?;
-                Err(Error::msg(format!("Error: {:?}", error_json)))
-            }
-        }
+        Ok(transactions.transactions)
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::DateRange;
     use crate::tests::test::get_client;
 
     #[tokio::test]
@@ -69,8 +88,20 @@ mod test {
         let accounts = monzo.accounts().await.unwrap();
         let account_id = &accounts[0].id;
 
+        println!("->> Account id: {}", account_id);
+
         let transactions = monzo.transactions(account_id).await.unwrap();
 
+        println!("got {} transactions", transactions.len());
+
         assert_eq!(transactions[0].currency, "GBP");
+    }
+
+    #[tokio::test]
+    async fn date_range_works() {
+        let range = DateRange::default();
+        println!("{:?}", range);
+        let (from, to) = range.to_rfc3339();
+        println!("from: {}, to: {}", from, to);
     }
 }

@@ -1,4 +1,5 @@
-use super::{ErrorJson, MonzoClient, MonzoClientError};
+use super::MonzoClient;
+use anyhow::Error;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -9,20 +10,12 @@ pub struct WhoAmI {
 }
 
 impl MonzoClient {
-    pub async fn whoami(&self) -> Result<WhoAmI, MonzoClientError> {
+    pub async fn whoami(&self) -> Result<WhoAmI, Error> {
         let url = format!("{}ping/whoami", self.base_url);
         let response = self.client.get(&url).send().await?;
+        let whoami: WhoAmI = Self::handle_response(response).await?;
 
-        match response.status().is_success() {
-            true => {
-                let success_json = response.json::<WhoAmI>().await?;
-                Ok(success_json)
-            }
-            false => {
-                let error_json = response.json::<ErrorJson>().await?;
-                Err(MonzoClientError::AuthorisationFailure(error_json))
-            }
-        }
+        Ok(whoami)
     }
 }
 

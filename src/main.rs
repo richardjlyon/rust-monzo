@@ -3,11 +3,23 @@ use monzo::client::MonzoClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let client = MonzoClient::new()?;
+    let monzo = MonzoClient::new()?;
 
-    let whoami = client.whoami().await?;
+    // get accounts
+    let accounts = monzo.accounts().await?;
 
-    println!("{:?}", whoami);
+    // get balances for accounts
+    for account in accounts {
+        println!("Getting balance for account: {}", account.id);
+        let balance = monzo.balance(&account.id).await?;
+        println!("{}: {:?}", account.description, balance);
+    }
+
+    // get transactions for each account
+
+    // process transactions
+
+    // write transactions to a file
 
     Ok(())
 }

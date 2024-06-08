@@ -1,5 +1,6 @@
-use super::{ErrorJson, MonzoClient, MonzoClientError};
+use super::MonzoClient;
 // use anyhow::{Error, Result};
+use anyhow::Error;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -19,20 +20,12 @@ pub struct Account {
 }
 
 impl MonzoClient {
-    pub async fn accounts(&self) -> Result<Vec<Account>, MonzoClientError> {
+    pub async fn accounts(&self) -> Result<Vec<Account>, Error> {
         let url = format!("{}accounts", self.base_url);
         let response = self.client.get(&url).send().await?;
+        let accounts: Accounts = Self::handle_response(response).await?;
 
-        match response.status().is_success() {
-            true => {
-                let accounts = response.json::<Accounts>().await?;
-                Ok(accounts.accounts)
-            }
-            false => {
-                let error_json = response.json::<ErrorJson>().await?;
-                Err(MonzoClientError::AuthorisationFailure(error_json))
-            }
-        }
+        Ok(accounts.accounts)
     }
 }
 

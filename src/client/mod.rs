@@ -3,13 +3,16 @@
 
 mod accounts;
 mod balance;
+mod pots;
 mod transactions;
 mod whoami;
 
 use core::fmt;
 
+use anyhow::Error as AnyError;
 use reqwest::header::{self, HeaderMap, HeaderValue};
-use reqwest::Error as ReqwestError;
+use reqwest::{Error as ReqwestError, Response};
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -58,5 +61,15 @@ impl MonzoClient {
             .expect("Failed to build client");
 
         Ok(MonzoClient { base_url, client })
+    }
+
+    async fn handle_response<T: DeserializeOwned>(response: Response) -> Result<T, AnyError> {
+        if response.status().is_success() {
+            let result = response.json::<T>().await?;
+            Ok(result)
+        } else {
+            let error_json = response.json::<ErrorJson>().await?;
+            Err(AnyError::msg(format!("Error: {:?}", error_json)))
+        }
     }
 }
