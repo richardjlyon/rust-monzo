@@ -31,13 +31,12 @@ async fn main() -> Result<(), Error> {
 
 // Structure for representing the authcode request response
 #[derive(Deserialize, Debug)]
-pub struct AuthCodeResponse {
+struct AuthCodeResponse {
     code: String,
     state: String,
 }
 
-pub async fn open_login_page(client_id: &str, redirect_uri: &str) {
-    let url = "https://auth.monzo.com/";
+async fn open_login_page(client_id: &str, redirect_uri: &str) {
     let state = Uuid::new_v4().to_string();
 
     let mut params = HashMap::new();
@@ -46,7 +45,8 @@ pub async fn open_login_page(client_id: &str, redirect_uri: &str) {
     params.insert("response_type", "code");
     params.insert("state", &state);
 
-    let url = generate_url(url, &params);
+    let base_url = "https://auth.monzo.com/";
+    let url = generate_url(base_url, &params);
 
     webbrowser::open(&url).expect("Failed to open browser");
 }
@@ -60,22 +60,21 @@ fn generate_url(base_url: &str, params: &HashMap<&str, &str>) -> String {
     url.to_string()
 }
 
-pub async fn oauth_callback(Query(params): Query<AuthCodeResponse>) -> Html<String> {
-    let _ = exchange_auth_code_for_access_token(&params).await;
-
-    format!(
-        "Received OAuth callback with code: {} and state: {}",
-        params.code, params.state
-    )
-    .into()
+async fn oauth_callback(Query(params): Query<AuthCodeResponse>) -> Html<String> {
+    match exchange_auth_code_for_access_token(&params).await {
+        Ok(_) => "Successfully exchanged auth code for access token"
+            .to_string()
+            .into(),
+        Err(e) => format!("Error getting access token: {}", e).into(),
+    }
 }
 
 // Exchange the auth code for an access token
 async fn exchange_auth_code_for_access_token(params: &AuthCodeResponse) -> Result<(), Error> {
-    let response = submit_access_token_request(params).await.unwrap();
+    let response = submit_access_token_request(params).await?;
     match response.status().is_success() {
         true => {
-            let access_tokens = response.json::<AccessTokens>().await.unwrap();
+            let access_tokens = response.json::<AccessTokens>().await?;
             save_access_tokens(access_tokens)?;
             Ok(())
         }
@@ -115,7 +114,7 @@ fn build_form<'a>(
 
 // Save the updated access tokens back to configuration
 fn save_access_tokens(access_tokens: AccessTokens) -> Result<(), Error> {
-    let mut config = get_configuration().unwrap();
+    let mut config = get_configuration()?;
     config.access_tokens = access_tokens;
     let file = File::create("configuration.yaml")?;
     serde_yaml::to_writer(file, &config)?;
