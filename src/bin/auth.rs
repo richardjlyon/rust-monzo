@@ -6,6 +6,8 @@ use anyhow::Error;
 use axum::{extract::Query, response::Html, routing::get, Router};
 use reqwest::Response;
 use serde::Deserialize;
+use tokio::time::{sleep, Duration};
+use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
@@ -13,7 +15,28 @@ use monzo::configuration::{get_configuration, AccessTokens, OathCredentials};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Open the browser with login page
+    // Create server
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+        .await
+        .unwrap();
+    let app = Router::new().route("/oauth/callback", get(oauth_callback));
+
+    let token = CancellationToken::new();
+    let cloned_token = token.clone();
+
+    let _server_handle = tokio::task::spawn(async move {
+        tokio::select! {
+            // Step 3: Using cloned token to listen to cancellation requests
+            _ = cloned_token.cancelled() => {
+                // The token was cancelled, task can shut down
+            }
+            _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
+                // Long work has completed
+            }
+        }
+        let _ = axum::serve(listener, app).await;
+    });
+
     let config = get_configuration().unwrap();
     open_login_page(
         &config.oath_credentials.client_id,
@@ -21,11 +44,9 @@ async fn main() -> Result<(), Error> {
     )
     .await;
 
-    // Create server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    let app = Router::new().route("/oauth/callback", get(oauth_callback));
-    axum::serve(listener, app).await.unwrap();
-
+    sleep(Duration::from_secs(60)).await;
+    // loop {}
+    //
     Ok(())
 }
 
@@ -33,7 +54,8 @@ async fn main() -> Result<(), Error> {
 #[derive(Deserialize, Debug)]
 struct AuthCodeResponse {
     code: String,
-    state: String,
+    #[serde(rename = "state")]
+    _state: String,
 }
 
 async fn open_login_page(client_id: &str, redirect_uri: &str) {
@@ -60,6 +82,7 @@ fn generate_url(base_url: &str, params: &HashMap<&str, &str>) -> String {
     url.to_string()
 }
 
+// oath callback function - handles the auth code response
 async fn oauth_callback(Query(params): Query<AuthCodeResponse>) -> Html<String> {
     match exchange_auth_code_for_access_token(&params).await {
         Ok(_) => "Successfully exchanged auth code for access token"
