@@ -13,6 +13,16 @@ use reqwest::Error as ReqwestError;
 use serde::Deserialize;
 use thiserror::Error;
 
+use crate::configuration::get_configuration;
+
+#[derive(Debug, Error)]
+pub enum MonzoClientError {
+    #[error("Authorisation failure: {0}")]
+    AuthorisationFailure(#[from] ErrorJson),
+    #[error("Network request failed: {0}")]
+    ReqwestError(#[from] ReqwestError),
+}
+
 #[derive(Debug, Deserialize, Error)]
 pub struct ErrorJson {
     code: String,
@@ -28,24 +38,15 @@ impl fmt::Display for ErrorJson {
 
 pub struct MonzoClient {
     base_url: String,
-    auth_url: String,
     client: reqwest::Client,
 }
 
-#[derive(Debug, Error)]
-pub enum MonzoClientError {
-    #[error("Authorisation failure: {0}")]
-    AuthorisationFailure(#[from] ErrorJson),
-    #[error("Network request failed: {0}")]
-    ReqwestError(#[from] ReqwestError),
-}
-
 impl MonzoClient {
-    pub fn new(access_token: String) -> Result<Self, MonzoClientError> {
+    pub fn new() -> Result<Self, MonzoClientError> {
         let base_url = "https://api.monzo.com/".to_string();
-        let auth_url = "https://auth.monzo.com/".to_string();
+        let config = get_configuration().unwrap();
         let mut headers = HeaderMap::new();
-        let auth_header_value = format!("Bearer {}", access_token);
+        let auth_header_value = format!("Bearer {}", config.access_tokens.access_token);
         headers.insert(
             header::AUTHORIZATION,
             HeaderValue::from_str(&auth_header_value).expect("Failed to create header value"),
@@ -56,10 +57,6 @@ impl MonzoClient {
             .build()
             .expect("Failed to build client");
 
-        Ok(MonzoClient {
-            base_url,
-            auth_url,
-            client,
-        })
+        Ok(MonzoClient { base_url, client })
     }
 }
