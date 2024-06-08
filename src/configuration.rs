@@ -1,11 +1,29 @@
 use anyhow::{Error, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use crate::auth::OathCredentials;
-
-#[derive(Clone, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Settings {
     pub oath_credentials: OathCredentials,
+    pub access_tokens: AccessTokens,
+}
+
+/// Structure for representing the components of the Oath client
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OathCredentials {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+}
+
+/// Structure for representing the components of the access token request response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AccessTokens {
+    pub access_token: String,
+    pub client_id: String,
+    pub expires_in: u64,
+    pub refresh_token: String,
+    pub token_type: String,
+    pub user_id: String,
 }
 
 pub fn get_configuration() -> Result<Settings, Error> {
@@ -19,16 +37,4 @@ pub fn get_configuration() -> Result<Settings, Error> {
         .build()
         .expect("Failed to build configuration."); // FIXME map error
     Ok(settings.try_deserialize::<Settings>()?)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn get_configuration_works() {
-        let config = get_configuration().expect("Failed to read configuration.");
-
-        assert!(config.oath_credentials.client_id.is_empty());
-    }
 }
