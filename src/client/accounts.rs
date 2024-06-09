@@ -1,26 +1,9 @@
+use anyhow::Error;
 use std::collections::HashMap;
 
+use crate::model::account::{Account, Accounts};
+
 use super::MonzoClient;
-// use anyhow::{Error, Result};
-use anyhow::Error;
-use chrono::{DateTime, Utc};
-use serde::Deserialize;
-
-#[derive(Deserialize, Debug)]
-pub struct Accounts {
-    pub accounts: Vec<Account>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Account {
-    pub id: String,
-    pub closed: bool,
-    pub created: DateTime<Utc>,
-    pub description: String,
-    pub owner_type: String,
-    pub account_number: String,
-    pub sort_code: String,
-}
 
 impl MonzoClient {
     /// Get a list of accounts

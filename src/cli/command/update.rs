@@ -1,9 +1,9 @@
 use anyhow::Error;
 use rusty_money::{iso, Money};
 
-use crate::client::{
-    transactions::{make_date_range, Transaction},
-    MonzoClient,
+use crate::{
+    client::{transactions::make_date_range, MonzoClient},
+    model::transaction::Transaction,
 };
 
 pub async fn update() -> Result<(), Error> {

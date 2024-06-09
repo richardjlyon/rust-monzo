@@ -1,21 +1,8 @@
 use anyhow::Error;
-use serde::Deserialize;
+
+use crate::model::pots::{Pot, Pots};
 
 use super::MonzoClient;
-
-#[derive(Deserialize, Debug)]
-pub struct Pots {
-    pots: Vec<Pot>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Pot {
-    pub id: String,
-    pub name: String,
-    pub balance: i64,
-    pub currency: String,
-    pub deleted: bool,
-}
 
 impl MonzoClient {
     /// Get all pots that are not deleted for a given account
