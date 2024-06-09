@@ -7,3 +7,7 @@ configuration.yaml
 db.sqlite
 
 db.sqlite-wal
+
+db.sqlite-shm
+
+out.rs

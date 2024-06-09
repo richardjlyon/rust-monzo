@@ -20,6 +20,15 @@ access_tokens:
   user_id: None
 ```
 
+## Database
+
+```bash
+sqlx database create
+sqlx migrate add <name>
+sqlx migrate run
+cargo sqlx prepare
+```
+
 ## ToDo
 
 - Command line app
