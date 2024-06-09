@@ -28,8 +28,7 @@ pub async fn oauth_callback(
 ) -> Html<String> {
     match exchange_auth_code_for_access_token(&params).await {
         Ok(token) => {
-            _ = state.token.set(token); // if it's set already we can just return
-            state.done.cancel();
+            _ = state.token_tx.send(Some(token));
             "success".to_string().into()
         }
         Err(e) => format!("Error getting access token: {}", e).into(),
@@ -59,16 +58,6 @@ async fn submit_access_token_request(params: &AuthCodeResponse) -> Result<Respon
     let response = client.post(url).form(&params).send().await?;
 
     Ok(response)
-}
-
-// Save the updated access tokens back to configuration
-fn save_access_tokens(access_tokens: AccessTokens) -> Result<(), Error> {
-    let mut config = get_configuration()?;
-    config.access_tokens = access_tokens;
-    let file = File::create("configuration.yaml")?;
-    serde_yaml::to_writer(file, &config)?;
-
-    Ok(())
 }
 
 // Build the form for the access token request

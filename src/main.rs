@@ -1,6 +1,9 @@
+use std::fs::File;
+
 use anyhow::Error;
 use clap::Parser;
 use cli::{command, Cli, Commands};
+use configuration::get_configuration;
 
 mod cli;
 mod configuration;
@@ -12,9 +15,12 @@ async fn main() -> Result<(), Error> {
 
     match &cli.command {
         Commands::Auth {} => {
-            command::auth().await;
+            let tokens = command::auth().await?;
+            let mut config = get_configuration()?;
+            config.access_tokens = tokens;
+            let file = File::create("configuration.yaml")?;
+            serde_yaml::to_writer(file, &config)?;
         }
-
         Commands::Reset {} => {
             command::reset().await;
         }

@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Error;
 use axum::{routing::get, Router};
 
-use tokio_util::sync::CancellationToken;
+use tokio::sync::watch;
+
 use url::Url;
 use uuid::Uuid;
 
@@ -12,11 +14,10 @@ use crate::routes::oauth_callback;
 
 #[derive(Clone)]
 pub struct AuthState {
-    pub token: Arc<std::sync::OnceLock<AccessTokens>>,
-    pub done: Arc<CancellationToken>,
+    pub token_tx: Arc<watch::Sender<Option<AccessTokens>>>,
 }
 
-pub async fn auth() -> AccessTokens {
+pub async fn auth() -> Result<AccessTokens, Error> {
     let config = get_configuration().unwrap();
 
     // Create server
@@ -24,12 +25,10 @@ pub async fn auth() -> AccessTokens {
         .await
         .unwrap();
 
-    let token = Arc::new(std::sync::OnceLock::new());
-    let done = Arc::new(CancellationToken::new());
+    let (token_tx, mut token_rx) = watch::channel(None);
 
     let state = AuthState {
-        token: token.clone(),
-        done: done.clone(),
+        token_tx: Arc::new(token_tx),
     };
 
     let app = Router::new()
@@ -37,15 +36,19 @@ pub async fn auth() -> AccessTokens {
         .with_state(state);
 
     tokio::select! {
-        _ = async {axum::serve(listener, app).await } => {},
-        _ = async {
+        _ = async {axum::serve(listener, app).await } => {
+            Err(anyhow::anyhow!("server stopped"))
+        },
+        access_tokens = async {
             open_login_page(
                 &config.oath_credentials.client_id,
                 &config.oath_credentials.redirect_uri,
             )
             .await;
-            done.cancelled().await;
-        } => {}
+            token_rx.wait_for(|v| v.is_some()).await
+        } => {
+            access_tokens.map(|v| v.as_ref().expect("checked Some above").to_owned()).map_err(|e| anyhow::anyhow!(e))
+        }
     }
 }
 
