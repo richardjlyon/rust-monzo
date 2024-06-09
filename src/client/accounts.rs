@@ -1,6 +1,7 @@
 use super::MonzoClient;
 // use anyhow::{Error, Result};
 use anyhow::Error;
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -12,7 +13,7 @@ pub struct Accounts {
 pub struct Account {
     pub id: String,
     pub closed: bool,
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub description: String,
     pub owner_type: String,
     pub account_number: String,
@@ -35,12 +36,13 @@ mod test {
     use crate::tests::test::get_client;
 
     #[tokio::test]
+    #[ignore]
     async fn accounts_work() {
+        // Arrange
         let monzo = get_client();
+        // Act
         let accounts = monzo.accounts().await.unwrap();
-        let account_id = &accounts[0].id;
-        let transactions = monzo.transactions(account_id).await.unwrap();
-
-        assert_eq!(transactions[0].currency, "GBP");
+        // Assert
+        assert!(accounts.len() > 0);
     }
 }

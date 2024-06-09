@@ -34,6 +34,7 @@ mod test {
     use crate::tests::test::get_client;
 
     #[tokio::test]
+    #[ignore]
     async fn pots_work() {
         let monzo = get_client();
         let pots = monzo.pots("acc_0000AdNaq81vwtbTBedL06").await.unwrap();

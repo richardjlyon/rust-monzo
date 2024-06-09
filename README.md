@@ -19,3 +19,13 @@ access_tokens:
   token_type: None
   user_id: None
 ```
+
+## ToDo
+
+- Command line app
+- Persistence
+- Refresh token handling
+- Graceful OAuth2 server shutdown
+- Implement Beancount exporter
+- Error handling. See: https://docs.monzo.com/?shell#errors
+- Incremental transaction update since last update.

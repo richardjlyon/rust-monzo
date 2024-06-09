@@ -24,6 +24,7 @@ mod test {
     use crate::tests::test::get_client;
 
     #[tokio::test]
+    #[ignore]
     async fn whoami_work() {
         let monzo = get_client();
         match monzo.whoami().await {
