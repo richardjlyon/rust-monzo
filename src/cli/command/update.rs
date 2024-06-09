@@ -14,6 +14,8 @@ pub async fn update() -> Result<(), Error> {
 
     let (since, before) = make_date_range(2024, 5); // TODO: use command parameters
 
+    let account_description = monzo.account_description_from_id().await?;
+
     let _txs: Vec<Transaction> = Vec::new();
 
     for account in monzo.accounts().await? {
@@ -26,6 +28,8 @@ pub async fn update() -> Result<(), Error> {
             if tx.amount == 0 {
                 continue;
             }
+
+            let account_name = account_description.get(&tx.account_id).unwrap();
 
             let iso_code = iso::find(&tx.currency).unwrap();
             let local_iso_code = iso::find(&tx.local_currency).unwrap();
@@ -43,7 +47,7 @@ pub async fn update() -> Result<(), Error> {
                 false => "".to_string(),
             };
 
-            let local_amount_fmt = match (iso_code == local_iso_code) {
+            let local_amount_fmt = match iso_code == local_iso_code {
                 true => "".to_string(),
                 false => format!(
                     "({})",
@@ -57,8 +61,8 @@ pub async fn update() -> Result<(), Error> {
             };
 
             println!(
-                "{:<12} {:>12} {:>12} {:>12} {:>25}",
-                date_fmt, credit_fmt, debit_fmt, local_amount_fmt, merchant_fmt
+                "{:<11} {:<8} {:>12} {:>12} {:>12} {:>25}",
+                date_fmt, account_name, credit_fmt, debit_fmt, local_amount_fmt, merchant_fmt
             );
         }
     }
