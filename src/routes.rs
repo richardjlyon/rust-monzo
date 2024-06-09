@@ -1,11 +1,17 @@
 use std::{collections::HashMap, fs::File};
 
 use anyhow::Error;
-use axum::{extract::Query, response::Html};
+use axum::{
+    extract::{Query, State},
+    response::Html,
+};
 use reqwest::Response;
 use serde::Deserialize;
 
-use crate::configuration::{get_configuration, AccessTokens, OathCredentials};
+use crate::{
+    cli::command::auth::AuthState,
+    configuration::{get_configuration, AccessTokens, OathCredentials},
+};
 
 // Structure for representing the authcode request response
 #[derive(Deserialize, Debug)]
@@ -16,23 +22,26 @@ pub struct AuthCodeResponse {
 }
 
 // oath callback function - handles the auth code response
-pub async fn oauth_callback(Query(params): Query<AuthCodeResponse>) -> Html<String> {
+pub async fn oauth_callback(
+    Query(params): Query<AuthCodeResponse>,
+    State(state): State<AuthState>,
+) -> Html<String> {
     match exchange_auth_code_for_access_token(&params).await {
-        Ok(_) => "Successfully exchanged auth code for access token"
-            .to_string()
-            .into(),
+        Ok(token) => {
+            _ = state.token.set(token); // if it's set already we can just return
+            state.done.cancel();
+            "success".to_string().into()
+        }
         Err(e) => format!("Error getting access token: {}", e).into(),
     }
 }
 
-async fn exchange_auth_code_for_access_token(params: &AuthCodeResponse) -> Result<(), Error> {
+async fn exchange_auth_code_for_access_token(
+    params: &AuthCodeResponse,
+) -> Result<AccessTokens, Error> {
     let response = submit_access_token_request(params).await?;
     match response.status().is_success() {
-        true => {
-            let access_tokens = response.json::<AccessTokens>().await?;
-            save_access_tokens(access_tokens)?;
-            Ok(())
-        }
+        true => Ok(response.json::<AccessTokens>().await?),
         false => Err(anyhow::anyhow!(
             "Failed to exchange auth code for access token"
         )),
