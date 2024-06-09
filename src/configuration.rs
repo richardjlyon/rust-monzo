@@ -3,8 +3,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
+    pub database: Database,
     pub oath_credentials: OathCredentials,
     pub access_tokens: AccessTokens,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Database {
+    pub database_path: String,
+    pub max_connections: u32,
 }
 
 /// Structure for representing the components of the Oath client

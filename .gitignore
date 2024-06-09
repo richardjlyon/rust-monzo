@@ -3,3 +3,7 @@
 configuration.yaml
 
 .DS_Store
+
+db.sqlite
+
+db.sqlite-wal

@@ -58,16 +58,16 @@ pub struct Address {
 #[derive(Deserialize, Debug)]
 pub struct Categories {
     #[serde(flatten)]
-    fields: HashMap<String, i32>,
+    _fields: HashMap<String, i32>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Attachment {
-    id: String,
-    external_id: String,
-    file_url: String,
-    file_type: String,
-    created: DateTime<Utc>,
+    _id: String,
+    _external_id: String,
+    _file_url: String,
+    _file_type: String,
+    _created: DateTime<Utc>,
 }
 
 // Custom deserialization function for Option<DateTime<Utc>>

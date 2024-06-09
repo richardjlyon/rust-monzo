@@ -1,9 +1,16 @@
 use anyhow::Error;
 use clap::Parser;
-use monzo::cli::{command, Cli, Commands};
+use monzo::{
+    cli::{command, Cli, Commands},
+    configuration::get_configuration,
+    model::DatabasePool,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let configuration = get_configuration().expect("Failed to read configuration.");
+    let _connection_pool = DatabasePool::new_from_config(configuration).await?;
+
     let cli = Cli::parse();
 
     match &cli.command {
