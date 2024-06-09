@@ -26,6 +26,8 @@ access_tokens:
 - Persistence
 - Refresh token handling
 - Graceful OAuth2 server shutdown
-- Implement Beancount exporter
+- Implement Beancount exporter.
+  - See: https://beancount.github.io/
+  - See: https://github.com/beancount/fava
 - Error handling. See: https://docs.monzo.com/?shell#errors
 - Incremental transaction update since last update.
