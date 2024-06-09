@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use anyhow::Error;
 use rusty_money::{iso, Money};
 
 use crate::{
     client::{transactions::make_date_range, MonzoClient},
+    error::AppError as Error,
     model::{
         account::{Account, AccountService, SqliteAccountService},
         transaction::Transaction,

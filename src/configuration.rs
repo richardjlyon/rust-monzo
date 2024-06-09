@@ -1,5 +1,6 @@
-use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
+
+use crate::error::AppError as Error;
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {

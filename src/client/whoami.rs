@@ -1,5 +1,5 @@
 use super::MonzoClient;
-use anyhow::Error;
+use crate::error::AppError as Error;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]

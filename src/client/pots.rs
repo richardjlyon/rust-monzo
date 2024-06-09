@@ -1,8 +1,6 @@
-use anyhow::Error;
-
-use crate::model::pots::{Pot, Pots};
-
 use super::MonzoClient;
+use crate::error::AppError as Error;
+use crate::model::pots::{Pot, Pots};
 
 impl MonzoClient {
     /// Get all pots that are not deleted for a given account

@@ -1,6 +1,6 @@
-use anyhow::Error;
 use std::collections::HashMap;
 
+use crate::error::AppError as Error;
 use crate::model::account::{Account, Accounts};
 
 use super::MonzoClient;

@@ -1,16 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-
-use anyhow::Error;
-use axum::{routing::get, Router};
-
 use tokio::sync::watch;
-
 use url::Url;
 use uuid::Uuid;
 
 use crate::configuration::{get_configuration, AccessTokens};
+use crate::error::AppError as Error;
 use crate::routes::oauth_callback;
+use axum::{routing::get, Router};
 
 #[derive(Clone)]
 pub struct AuthState {
@@ -54,7 +51,7 @@ async fn get_access_tokens() -> Result<AccessTokens, Error> {
 
     tokio::select! {
         _ = async {axum::serve(listener, app).await } => {
-            Err(anyhow::anyhow!("server stopped"))
+            Err(Error::ServerError)
         },
 
         access_tokens = async {
@@ -65,7 +62,7 @@ async fn get_access_tokens() -> Result<AccessTokens, Error> {
             .await;
             token_rx.wait_for(|v| v.is_some()).await
         } => {
-            access_tokens.map(|v| v.as_ref().expect("checked Some above").to_owned()).map_err(|e| anyhow::anyhow!(e))
+            access_tokens.map(|v| v.as_ref().expect("checked Some above").to_owned()).map_err(|e| Error::AccessTokenError(e.to_string()))
         }
     }
 }

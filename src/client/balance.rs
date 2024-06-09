@@ -1,7 +1,6 @@
-use crate::model::balance::Balance;
-
 use super::MonzoClient;
-use anyhow::{Error, Result};
+use crate::error::AppError as Error;
+use crate::model::balance::Balance;
 
 impl MonzoClient {
     pub async fn balance(&self, account_id: &str) -> Result<Balance, Error> {

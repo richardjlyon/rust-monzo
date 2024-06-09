@@ -1,32 +1,23 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::error::AppError as Error;
+use core::fmt;
+use reqwest::header::{self, HeaderMap, HeaderValue};
+use reqwest::{Error as ReqwestError, Response};
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
+
+use crate::configuration::get_configuration;
+// use crate::error::AppError as Error;
+
 mod accounts;
 mod balance;
 mod pots;
 pub mod transactions;
 mod whoami;
 
-use core::fmt;
-
-use anyhow::Error as AnyError;
-use reqwest::header::{self, HeaderMap, HeaderValue};
-use reqwest::{Error as ReqwestError, Response};
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
-use thiserror::Error;
-
-use crate::configuration::get_configuration;
-
-#[derive(Debug, Error)]
-pub enum MonzoClientError {
-    #[error("Authorisation failure: {0}")]
-    AuthorisationFailure(#[from] ErrorJson),
-    #[error("Network request failed: {0}")]
-    ReqwestError(#[from] ReqwestError),
-}
-
-#[derive(Debug, Deserialize, Error)]
+#[derive(Debug, Deserialize, thiserror::Error)]
 pub struct ErrorJson {
     code: String,
     message: String,
@@ -45,7 +36,7 @@ pub struct MonzoClient {
 }
 
 impl MonzoClient {
-    pub fn new() -> Result<Self, MonzoClientError> {
+    pub fn new() -> Result<Self, Error> {
         let base_url = "https://api.monzo.com/".to_string();
         let config = get_configuration().unwrap();
         let mut headers = HeaderMap::new();
@@ -63,13 +54,14 @@ impl MonzoClient {
         Ok(MonzoClient { base_url, client })
     }
 
-    async fn handle_response<T: DeserializeOwned>(response: Response) -> Result<T, AnyError> {
+    async fn handle_response<T: DeserializeOwned>(response: Response) -> Result<T, Error> {
         if response.status().is_success() {
             let result = response.json::<T>().await?;
             Ok(result)
         } else {
             let error_json = response.json::<ErrorJson>().await?;
-            Err(AnyError::msg(format!("Error: {:?}", error_json)))
+            // Err(AnyError::msg(format!("Error: {:?}", error_json)))
+            Err(Error::HandlerError)
         }
     }
 }

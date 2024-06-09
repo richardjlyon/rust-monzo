@@ -1,10 +1,10 @@
-use anyhow::Error;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
 };
 
 use crate::configuration::Settings;
+use crate::error::AppError as Error;
 
 pub mod account;
 pub mod balance;

@@ -1,8 +1,8 @@
-use anyhow::Error;
 use clap::Parser;
 use monzo::{
     cli::{command, Cli, Commands},
     configuration::get_configuration,
+    error::AppError as Error,
     model::DatabasePool,
 };
 

@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-
-use anyhow::Error;
 use axum::{
     extract::{Query, State},
     response::Html,
 };
 use reqwest::Response;
 use serde::Deserialize;
+use std::collections::HashMap;
 
+use crate::error::AppError as Error;
 use crate::{
     cli::command::auth::AuthState,
     configuration::{get_configuration, AccessTokens, OathCredentials},
@@ -41,9 +40,7 @@ async fn exchange_auth_code_for_access_token(
     let response = submit_access_token_request(params).await?;
     match response.status().is_success() {
         true => Ok(response.json::<AccessTokens>().await?),
-        false => Err(anyhow::anyhow!(
-            "Failed to exchange auth code for access token"
-        )),
+        false => Err(Error::AuthCodeExchangeError),
     }
 }
 

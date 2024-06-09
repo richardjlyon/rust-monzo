@@ -1,7 +1,7 @@
-use anyhow::Error;
 use rusty_money::{iso, Money};
 
 use crate::client::MonzoClient;
+use crate::error::AppError as Error;
 
 pub async fn balances() -> Result<(), Error> {
     let monzo = MonzoClient::new()?;

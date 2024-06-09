@@ -1,10 +1,10 @@
 //! Models for the account endpoint
 
-use anyhow::Error;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use super::DatabasePool;
+use crate::error::AppError as Error;
 
 #[derive(Deserialize, Debug)]
 pub struct Accounts {

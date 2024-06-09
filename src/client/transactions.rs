@@ -1,8 +1,8 @@
-use crate::model::transaction::{Transaction, Transactions};
+use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 
 use super::MonzoClient;
-use anyhow::{Error, Result};
-use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+use crate::error::AppError as Error;
+use crate::model::transaction::{Transaction, Transactions};
 
 impl MonzoClient {
     /// Get maximum of [limit] transactions for the given account ID within the given date range
