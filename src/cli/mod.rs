@@ -13,9 +13,10 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Account balances
+    Balances {},
     /// (Re)authorise the application
     Auth {},
-
     /// Reset the database (WARNING: This will delete all data!)
     Reset {},
 }

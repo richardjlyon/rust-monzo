@@ -1,26 +1,20 @@
-use std::fs::File;
-
 use anyhow::Error;
 use clap::Parser;
-use cli::{command, Cli, Commands};
-use configuration::get_configuration;
-
-mod cli;
-mod configuration;
-mod routes;
+use monzo::cli::{command, Cli, Commands};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Auth {} => {
-            let tokens = command::auth().await?;
-            let mut config = get_configuration()?;
-            config.access_tokens = tokens;
-            let file = File::create("configuration.yaml")?;
-            serde_yaml::to_writer(file, &config)?;
-        }
+        Commands::Balances {} => match command::balances().await {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {}", e),
+        },
+        Commands::Auth {} => match command::auth().await {
+            Ok(_) => println!("Auth completed"),
+            Err(e) => eprintln!("Error: {}", e),
+        },
         Commands::Reset {} => {
             command::reset().await;
         }

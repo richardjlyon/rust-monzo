@@ -31,3 +31,4 @@ access_tokens:
   - See: https://github.com/beancount/fava
 - Error handling. See: https://docs.monzo.com/?shell#errors
 - Incremental transaction update since last update.
+- Instrumentation

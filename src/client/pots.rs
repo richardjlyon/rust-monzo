@@ -10,11 +10,11 @@ pub struct Pots {
 
 #[derive(Deserialize, Debug)]
 pub struct Pot {
-    id: String,
-    name: String,
-    balance: i64,
-    currency: String,
-    deleted: bool,
+    pub id: String,
+    pub name: String,
+    pub balance: i64,
+    pub currency: String,
+    pub deleted: bool,
 }
 
 impl MonzoClient {

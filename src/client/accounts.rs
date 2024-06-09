@@ -32,7 +32,6 @@ impl MonzoClient {
 
 #[cfg(test)]
 mod test {
-
     use crate::tests::test::get_client;
 
     #[tokio::test]
