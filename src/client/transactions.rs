@@ -19,8 +19,8 @@ pub struct Transaction {
     pub currency: String,
     pub local_amount: i64,
     pub local_currency: String,
-    #[serde(deserialize_with = "deserialize_optional_datetime")]
-    pub created: Option<DateTime<Utc>>,
+    // #[serde(deserialize_with = "deserialize_optional_datetime")]
+    pub created: DateTime<Utc>,
     pub description: String,
     pub amount_is_pending: bool,
     pub merchant: Option<Merchant>,
@@ -35,24 +35,24 @@ pub struct Transaction {
 }
 #[derive(Deserialize, Debug)]
 pub struct Merchant {
-    id: String,
-    name: String,
-    category: String,
-    logo: Option<String>,
-    address: Address,
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub logo: Option<String>,
+    pub address: Address,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Address {
-    short_formatted: String,
-    formatted: String,
-    city: String,
-    latitude: f64,
-    longitude: f64,
-    address: String,
-    region: String,
-    country: String,
-    postcode: String,
+    pub short_formatted: String,
+    pub formatted: String,
+    pub city: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub address: String,
+    pub region: String,
+    pub country: String,
+    pub postcode: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -101,7 +101,7 @@ impl MonzoClient {
 
 // Generate a date range for the given year and month
 // Returns a tuple of (since, before) DateTime<Utc> to work with the Monzo API transactions endpoint
-fn make_date_range(year: i32, month: u32) -> (DateTime<Utc>, DateTime<Utc>) {
+pub fn make_date_range(year: i32, month: u32) -> (DateTime<Utc>, DateTime<Utc>) {
     let length_seconds = 60 * 60 * 24 * num_days_in_month(year, month);
 
     let since = Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();

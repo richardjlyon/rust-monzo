@@ -8,7 +8,7 @@ pub async fn balances() -> Result<(), Error> {
 
     let mut balance_total = 0;
 
-    println!("BALANCES");
+    println!("{:>42}", "BALANCES");
     println!("------------------------------------------");
 
     // Display accounts
@@ -17,12 +17,8 @@ pub async fn balances() -> Result<(), Error> {
         balance_total = balance_total + balance.balance;
 
         let iso_code = iso::find(&balance.currency).unwrap();
-        let balance_fmt = Money::from_minor(balance.balance, iso_code)
-            .to_string()
-            .to_lowercase();
-        let spend_today_fmt = Money::from_minor(balance.spend_today, iso_code)
-            .to_string()
-            .to_lowercase();
+        let balance_fmt = Money::from_minor(balance.balance, iso_code).to_string();
+        let spend_today_fmt = Money::from_minor(balance.spend_today, iso_code).to_string();
 
         println!(
             "{:<8} ({}) : {:>11} {:>8}",

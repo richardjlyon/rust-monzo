@@ -4,7 +4,7 @@
 mod accounts;
 mod balance;
 mod pots;
-mod transactions;
+pub mod transactions;
 mod whoami;
 
 use core::fmt;

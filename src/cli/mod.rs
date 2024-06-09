@@ -13,6 +13,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Update transactions
+    Update {},
     /// Account balances
     Balances {},
     /// (Re)authorise the application

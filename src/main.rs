@@ -11,6 +11,10 @@ async fn main() -> Result<(), Error> {
             Ok(_) => {}
             Err(e) => eprintln!("Error: {}", e),
         },
+        Commands::Update {} => match command::update().await {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {}", e),
+        },
         Commands::Auth {} => match command::auth().await {
             Ok(_) => println!("Auth completed"),
             Err(e) => eprintln!("Error: {}", e),

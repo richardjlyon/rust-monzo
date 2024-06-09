@@ -1,3 +1,5 @@
 /target
 .env
 configuration.yaml
+
+.DS_Store
