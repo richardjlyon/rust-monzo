@@ -1,14 +1,21 @@
 use clap::Parser;
+
 use monzo::{
     cli::{command, Cli, Commands},
     configuration::get_configuration,
     error::AppError as Error,
     model::DatabasePool,
+    telemetry::{get_subscriber, init_subscriber},
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Initialise instrumentation subscriber
+    let subscriber = get_subscriber("monzo".into(), "info".into(), || std::io::stdout());
+    init_subscriber(subscriber);
+
     let configuration = get_configuration().expect("Failed to read configuration.");
+
     let connection_pool = DatabasePool::new_from_config(configuration).await?;
 
     let cli = Cli::parse();
