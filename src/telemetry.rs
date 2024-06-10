@@ -1,7 +1,7 @@
-use std::io::Sink;
+// use std::io::Sink;
 
+use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
-use tracing::{info, subscriber::set_global_default};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Registry};

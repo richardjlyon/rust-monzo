@@ -7,6 +7,7 @@ use reqwest::header::{self, HeaderMap, HeaderValue};
 use reqwest::Response;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use tracing_log::log::{error, info};
 
 use crate::configuration::get_configuration;
 // use crate::error::AppError as Error;
@@ -54,13 +55,16 @@ impl MonzoClient {
         Ok(MonzoClient { base_url, client })
     }
 
+    #[tracing::instrument(name = "Handle response", skip(response))]
     async fn handle_response<T: DeserializeOwned>(response: Response) -> Result<T, Error> {
         if response.status().is_success() {
+            info!("Response is successful");
             let result = response.json::<T>().await?;
             Ok(result)
         } else {
             let error_json = response.json::<ErrorJson>().await?;
             // Err(AnyError::msg(format!("Error: {:?}", error_json)))
+            error!("Response error: {:?}", error_json);
             Err(Error::HandlerError)
         }
     }

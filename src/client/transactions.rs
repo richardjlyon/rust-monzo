@@ -11,6 +11,7 @@ use crate::model::transaction::{Transaction, Transactions};
 impl MonzoClient {
     /// Get maximum of [limit] transactions for the given account ID within the given date range
     /// Note: This will expand the merchant field for each transaction
+    #[tracing::instrument(name = "Get transactions", skip(self))]
     pub async fn transactions(
         &self,
         account_id: &str,
@@ -68,11 +69,13 @@ fn num_days_in_month(year: i32, month: u32) -> u32 {
 mod test {
     use chrono::{TimeZone, Utc};
 
-    use crate::tests::test::get_client;
+    use crate::tests::{self, test::get_client};
 
     #[tokio::test]
     async fn transactions_work() {
         let monzo = get_client();
+        let (pool, _tmp) = tests::test::test_db().await;
+
         let account_id = "acc_0000AdNaq81vwtbTBedL06";
         let (since, before) = super::make_date_range(2024, 5);
         let transactions = monzo
