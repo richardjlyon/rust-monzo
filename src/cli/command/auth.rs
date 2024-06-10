@@ -1,3 +1,8 @@
+//! Auth
+//!
+//! This command will obtain an access token from Monzo, exchange it
+//! for an authorisation token, and persist it to the configuration file.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::watch;

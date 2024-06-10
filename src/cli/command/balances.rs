@@ -1,3 +1,8 @@
+//! Get balances
+//!
+//! This command will fetch the balances of all accounts
+//! and print them to the console.
+
 use rusty_money::{iso, Money};
 
 use crate::client::MonzoClient;
@@ -8,8 +13,8 @@ pub async fn balances() -> Result<(), Error> {
 
     let mut balance_total = 0;
 
-    println!("{:>42}", "BALANCES");
-    println!("------------------------------------------");
+    println!("{:>44}", "BALANCES");
+    println!("--------------------------------------------");
 
     // Display accounts
     for account in monzo.accounts().await? {
@@ -21,7 +26,7 @@ pub async fn balances() -> Result<(), Error> {
         let spend_today_fmt = Money::from_minor(balance.spend_today, iso_code).to_string();
 
         println!(
-            "{:<8} ({}) : {:>11} {:>8}",
+            "{:<8} ({}) : {:>11} {:>10}",
             account.owner_type, account.account_number, balance_fmt, spend_today_fmt,
         );
 
@@ -37,7 +42,7 @@ pub async fn balances() -> Result<(), Error> {
             println!("- {:<18}: {:>11}", pot.name.to_lowercase(), balance_fmt);
         }
     }
-    println!("------------------------------------------");
+    println!("--------------------------------------------");
     println!(
         "Total: {:>26}",
         Money::from_minor(balance_total, iso::GBP).to_string() // FIXME: Use the account currency

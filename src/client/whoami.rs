@@ -1,3 +1,7 @@
+//! Whoami related functions
+//!
+//! This module gets whoami information from the Monzo API.
+
 use super::MonzoClient;
 use crate::error::AppError as Error;
 use serde::Deserialize;

@@ -1,3 +1,7 @@
+//! Account related functions
+//!
+//! This module gets account information from the Monzo API.
+
 use std::collections::HashMap;
 
 use crate::error::AppError as Error;

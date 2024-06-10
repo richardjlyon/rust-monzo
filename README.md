@@ -31,13 +31,9 @@ cargo sqlx prepare
 
 ## ToDo
 
-- Command line app
-- Persistence
-- Refresh token handling
-- Graceful OAuth2 server shutdown
+- Incremental transaction update since last update.
 - Implement Beancount exporter.
   - See: https://beancount.github.io/
   - See: https://github.com/beancount/fava
+- Refresh token handling
 - Error handling. See: https://docs.monzo.com/?shell#errors
-- Incremental transaction update since last update.
-- Instrumentation

@@ -1,3 +1,7 @@
+//! Transaction related functions
+//!
+//! This module gets transaction information from the Monzo API.
+
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 
 use super::MonzoClient;

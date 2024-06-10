@@ -10,8 +10,7 @@ use monzo::{
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Initialise instrumentation subscriber
-    let subscriber = get_subscriber("monzo".into(), "info".into(), || std::io::stdout());
+    let subscriber = get_subscriber("monzo".into(), "error".into(), || std::io::stdout());
     init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
@@ -34,7 +33,7 @@ async fn main() -> Result<(), Error> {
             Err(e) => eprintln!("Error: {}", e),
         },
         Commands::Reset {} => {
-            command::reset().await;
+            command::reset(connection_pool).await;
         }
     }
 

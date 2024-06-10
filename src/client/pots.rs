@@ -1,3 +1,7 @@
+//! Pots related functions
+//!
+//! This module gets pot information from the Monzo API.
+
 use super::MonzoClient;
 use crate::error::AppError as Error;
 use crate::model::pots::{Pot, Pots};

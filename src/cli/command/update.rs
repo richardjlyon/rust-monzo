@@ -1,3 +1,9 @@
+//! Update transactions
+//!
+//! This command will fetch transactions from Monzo. By default, it will fetch
+//! all transactions since the last. Flag `--all` can be used to reset the
+//! database and refetch all transactions.
+
 use std::collections::HashMap;
 
 use rusty_money::{iso, Money};

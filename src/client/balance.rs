@@ -1,3 +1,7 @@
+//! Balance related functions
+//!
+//! This module gets balance information from the Monzo API.
+
 use super::MonzoClient;
 use crate::error::AppError as Error;
 use crate::model::balance::Balance;
