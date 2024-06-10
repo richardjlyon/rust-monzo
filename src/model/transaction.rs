@@ -78,6 +78,7 @@ pub struct Attachment {
 
 pub trait TransactionService {
     async fn create_transaction(&self, tx_fc: &Transaction) -> Result<(), Error>;
+    async fn delete_all_transactions(&self) -> Result<(), Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +167,22 @@ impl TransactionService for SqliteTransactionService {
                     tx_fc.account_id,
                     merchant_id.unwrap_or("None".to_string()),
                 );
+                Err(Error::DbError(e.to_string()))
+            }
+        }
+    }
+
+    #[tracing::instrument(name = "Delete all transactions", skip(self))]
+    async fn delete_all_transactions(&self) -> Result<(), Error> {
+        let db = self.pool.db();
+
+        match sqlx::query!("DELETE FROM transactions").execute(db).await {
+            Ok(_) => {
+                info!("Deleted all transactions");
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to delete all transactions: {}", e.to_string());
                 Err(Error::DbError(e.to_string()))
             }
         }
