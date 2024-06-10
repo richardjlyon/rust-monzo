@@ -1,5 +1,6 @@
 //! Models for the merchant endpoint
 
+use async_trait::async_trait;
 use serde::Deserialize;
 use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
@@ -32,6 +33,7 @@ pub struct Address {
 
 // -- Services -------------------------------------------------------------------------
 
+#[async_trait]
 pub trait MerchantService {
     async fn create_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error>;
     async fn get_merchant(&self, merchant_id: &str) -> Result<Merchant, Error>;
@@ -51,6 +53,7 @@ impl SqliteMerchantService {
 
 // -- Service Implementations ----------------------------------------------------------
 
+#[async_trait]
 impl MerchantService for SqliteMerchantService {
     #[tracing::instrument(
         name = "Create merchant",
@@ -152,4 +155,65 @@ async fn is_duplicate_merchant(db: &Pool<Sqlite>, merchant_id: &str) -> Result<b
     .await?;
 
     Ok(existing_merchant.is_some())
+}
+
+// -- Tests ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::test::test_db;
+
+    #[tokio::test]
+    async fn test_create_merchant() {
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteMerchantService::new(pool);
+
+        let merchant = Merchant {
+            id: "123".to_string(),
+            name: "Test Merchant".to_string(),
+            category: "Test Category".to_string(),
+        };
+
+        let result = service.create_merchant(&merchant).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_merchant() {
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteMerchantService::new(pool);
+
+        let merchant = Merchant {
+            id: "123".to_string(),
+            name: "Test Merchant".to_string(),
+            category: "Test Category".to_string(),
+        };
+
+        service.create_merchant(&merchant).await.unwrap();
+
+        let result = service.get_merchant(&merchant.id).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().id, merchant.id);
+    }
+
+    #[tokio::test]
+    async fn test_delete_all_merchants() {
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteMerchantService::new(pool);
+
+        let merchant = Merchant {
+            id: "123".to_string(),
+            name: "Test Merchant".to_string(),
+            category: "Test Category".to_string(),
+        };
+
+        service.create_merchant(&merchant).await.unwrap();
+
+        let result = service.delete_all_merchants().await;
+
+        assert!(result.is_ok());
+    }
 }
