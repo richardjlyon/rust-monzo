@@ -8,6 +8,7 @@ use crate::error::AppError as Error;
 
 pub mod account;
 pub mod balance;
+pub mod merchant;
 pub mod pots;
 pub mod transaction;
 

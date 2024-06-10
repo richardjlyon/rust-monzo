@@ -11,7 +11,7 @@ CREATE TABLE accounts (
 );
 
 CREATE TABLE pots (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     balance INTEGER NOT NULL,
     currency TEXT NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE transactions (
 );
 
 CREATE TABLE merchants (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    category TEXT
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL
 );

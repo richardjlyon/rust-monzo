@@ -6,7 +6,7 @@ use sqlx::{Pool, Sqlite};
 use std::collections::HashMap;
 use tracing_log::log::{error, info};
 
-use super::DatabasePool;
+use super::{merchant::Merchant, DatabasePool};
 use crate::error::AppError as Error;
 
 #[derive(Deserialize, Debug)]
@@ -36,27 +36,6 @@ pub struct Transaction {
     pub category: String,
     pub categories: Categories,
     pub attachments: Option<Vec<Attachment>>,
-}
-#[derive(Deserialize, Debug)]
-pub struct Merchant {
-    pub id: String,
-    pub name: String,
-    pub category: String,
-    pub logo: Option<String>,
-    pub address: Address,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Address {
-    pub short_formatted: String,
-    pub formatted: String,
-    pub city: String,
-    pub latitude: f64,
-    pub longitude: f64,
-    pub address: String,
-    pub region: String,
-    pub country: String,
-    pub postcode: String,
 }
 
 #[derive(Deserialize, Debug)]
