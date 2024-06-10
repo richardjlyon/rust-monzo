@@ -1,5 +1,6 @@
 //! Models for the account endpoint
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use sqlx::{Pool, Sqlite};
@@ -26,6 +27,7 @@ pub struct Account {
 
 // -- Services ------------------------------------------------
 
+#[async_trait]
 pub trait AccountService {
     async fn create_account(&self, acc_fc: &Account) -> Result<(), Error>;
 }
@@ -43,6 +45,7 @@ impl SqliteAccountService {
 
 // -- Service Implementations ----------------------------------------------------------
 
+#[async_trait]
 impl AccountService for SqliteAccountService {
     #[tracing::instrument(
         name = "Creating account",

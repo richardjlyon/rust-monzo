@@ -1,5 +1,6 @@
 //! Models for the transaction endpoint
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
 use sqlx::{Pool, Sqlite};
@@ -55,6 +56,7 @@ pub struct Attachment {
 
 // -- Services -------------------------------------------------------------------------
 
+#[async_trait]
 pub trait TransactionService {
     async fn create_transaction(&self, tx_fc: &Transaction) -> Result<(), Error>;
     async fn delete_all_transactions(&self) -> Result<(), Error>;
@@ -73,6 +75,7 @@ impl SqliteTransactionService {
 
 // -- Service Implementations ----------------------------------------------------------
 
+#[async_trait]
 impl TransactionService for SqliteTransactionService {
     #[tracing::instrument(
         name = "Create transaction",
