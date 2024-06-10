@@ -1,9 +1,11 @@
 //! Models for the transaction endpoint
 
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
+use std::collections::HashMap;
+
+use super::DatabasePool;
+use crate::error::AppError as Error;
 
 #[derive(Deserialize, Debug)]
 pub struct Transactions {

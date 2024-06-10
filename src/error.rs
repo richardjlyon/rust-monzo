@@ -33,6 +33,9 @@ pub enum AppError {
     #[error("Query error")]
     QueryError(#[from] sqlx::Error),
 
+    #[error("Query error {0}")]
+    Duplicate(String),
+
     #[error("Configuration error")]
     ConfigurationError(#[from] config::ConfigError),
 }

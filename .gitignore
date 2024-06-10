@@ -11,3 +11,5 @@ db.sqlite-wal
 db.sqlite-shm
 
 out.rs
+
+notes and queries.md

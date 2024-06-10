@@ -4,7 +4,7 @@
 use crate::error::AppError as Error;
 use core::fmt;
 use reqwest::header::{self, HeaderMap, HeaderValue};
-use reqwest::{Error as ReqwestError, Response};
+use reqwest::Response;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
