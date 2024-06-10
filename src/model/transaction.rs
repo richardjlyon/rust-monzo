@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
+use sqlx::{Pool, Sqlite};
 use std::collections::HashMap;
 use tracing_log::log::{error, info};
 
@@ -94,94 +95,29 @@ impl SqliteTransactionService {
 
 impl TransactionService for SqliteTransactionService {
     #[tracing::instrument(
-        name = "Creating a transaction",
+        name = "Create transaction",
         skip(self, tx_fc),
         fields(tx_id = %tx_fc.id, acc_id = %tx_fc.account_id)
     )]
     async fn create_transaction(&self, tx_fc: &Transaction) -> Result<(), Error> {
         let db = self.pool.db();
 
-        // return if the transaction already exists
-        info!("Checking if Transaction already exists: {}", tx_fc.id);
-        let existing_transaction = sqlx::query!(
-            r"
-                SELECT id
-                FROM transactions
-                WHERE id = $1
-            ",
-            tx_fc.id,
-        )
-        .fetch_optional(db)
-        .await?;
-
-        if existing_transaction.is_some() {
-            info!("Skipped existing Transaction: {}", tx_fc.id);
+        if is_duplicate_transaction(db, &tx_fc.id).await? {
+            info!("Transaction exists. Skipping");
             return Err(Error::Duplicate("Transaction already exists".to_string()));
         }
 
-        // insert the merchant if there is one and it doesn't already exist
-        info!("Checking if transaction has merchant: {:?}", tx_fc);
-        let merchant_id = tx_fc.merchant.as_ref().map_or(None, |m| Some(m.id.clone()));
-
-        if merchant_id.is_some() {
-            let merchant_id = merchant_id.clone().unwrap();
-            info!(
-                "Has merchant. Checking if Merchant exists in db: {}",
-                merchant_id
-            );
-
-            match sqlx::query!(
-                r"
-                    SELECT id
-                    FROM merchants
-                    WHERE id = $1
-                ",
-                merchant_id,
-            )
-            .fetch_optional(db)
-            .await
-            {
-                Ok(Some(_)) => (),
-                Ok(None) => {
-                    info!("Inserting Merchant : {:?}", merchant_id);
-                    // insert the account
-                    match sqlx::query!(
-                        r"
-                            INSERT INTO merchants (
-                                id,
-                                name,
-                                category
-                            )
-                            VALUES ($1, $2, $3)
-                        ",
-                        tx_fc.merchant.as_ref().unwrap().id,
-                        tx_fc.merchant.as_ref().unwrap().name,
-                        tx_fc.merchant.as_ref().unwrap().category,
-                    )
-                    .execute(db)
-                    .await
-                    {
-                        Ok(_) => {
-                            info!("Created merchant: {:?}", merchant_id);
-                            ()
-                        }
-                        Err(e) => {
-                            error!("Failed to create merchant: {:?}", merchant_id);
-                            return Err(Error::DbError(e.to_string()));
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to check if merchant exists: {:?}", merchant_id);
-                    return Err(Error::DbError(e.to_string()));
-                }
+        // if the transaction has a merchant and it doesn't exist in the db...
+        if let Some(merchant_id) = transaction_merchant_id(&tx_fc) {
+            if !merchant_exists(db, &merchant_id).await? {
+                // ...insert the merchant
+                insert_merchant(db, &tx_fc.merchant.as_ref().unwrap()).await?;
             }
         }
 
-        // insert the transaction
+        let merchant_id = transaction_merchant_id(&tx_fc);
 
-        info!("Inserting transaction : {}", tx_fc.id);
-
+        info!("Inserting transaction");
         match sqlx::query!(
             r"
                 INSERT INTO transactions (
@@ -228,7 +164,7 @@ impl TransactionService for SqliteTransactionService {
                     tx_fc.id,
                     e.to_string(),
                     tx_fc.account_id,
-                    merchant_id.unwrap_or("None".to_string(),)
+                    merchant_id.unwrap_or("None".to_string()),
                 );
                 Err(Error::DbError(e.to_string()))
             }
@@ -253,5 +189,75 @@ where
                 s
             ))),
         },
+    }
+}
+
+// Check if a transaction is a duplicate
+async fn is_duplicate_transaction(db: &Pool<Sqlite>, tx_id: &str) -> Result<bool, Error> {
+    let existing_transaction = sqlx::query!(
+        r"
+            SELECT id
+            FROM transactions
+            WHERE id = $1
+        ",
+        tx_id,
+    )
+    .fetch_optional(db)
+    .await?;
+
+    Ok(existing_transaction.is_some())
+}
+
+// check if a transaction has a merchant
+fn transaction_merchant_id(transaction: &Transaction) -> Option<String> {
+    transaction
+        .merchant
+        .as_ref()
+        .map_or(None, |m| Some(m.id.clone()))
+}
+
+// check if a merchant exists
+async fn merchant_exists(db: &Pool<Sqlite>, merchant_id: &str) -> Result<bool, Error> {
+    let merchant = sqlx::query!(
+        r"
+                SELECT id
+                FROM merchants
+                WHERE id = $1
+            ",
+        merchant_id,
+    )
+    .fetch_optional(db)
+    .await?;
+
+    Ok(merchant.is_some())
+}
+
+// insert a merchant
+#[tracing::instrument(name = "Insert merchant", skip(db, merchant))]
+async fn insert_merchant(db: &Pool<Sqlite>, merchant: &Merchant) -> Result<(), Error> {
+    match sqlx::query!(
+        r"
+            INSERT INTO merchants (
+                id,
+                name,
+                category
+            )
+            VALUES ($1, $2, $3)
+        ",
+        merchant.id,
+        merchant.name,
+        merchant.category,
+    )
+    .execute(db)
+    .await
+    {
+        Ok(_) => {
+            info!("Created merchant: {:?}", merchant.id);
+            Ok(())
+        }
+        Err(e) => {
+            error!("Failed to create merchant: {:?}", merchant.id);
+            Err(Error::DbError(e.to_string()))
+        }
     }
 }

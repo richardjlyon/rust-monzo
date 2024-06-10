@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
 
 use super::DatabasePool;
@@ -43,29 +44,20 @@ impl SqliteAccountService {
 // -- Service Implementations ----------------------------------------------------------
 
 impl AccountService for SqliteAccountService {
-    #[tracing::instrument(name = "Creating an account", skip(self, acc_fc), fields(id = %acc_fc.id))]
+    #[tracing::instrument(
+        name = "Creating account",
+        skip(self, acc_fc),
+        fields(id = %acc_fc.id)
+    )]
     async fn create_account(&self, acc_fc: &Account) -> Result<(), Error> {
         let db = self.pool.db();
 
-        // return if the account already exists
-        info!("Checking if Account already exists: {}", acc_fc.id);
-        let existing_account = sqlx::query!(
-            r"
-                SELECT id
-                FROM accounts
-                WHERE id = $1
-            ",
-            acc_fc.id,
-        )
-        .fetch_optional(db)
-        .await?;
-
-        if existing_account.is_some() {
-            info!("Skipped existing account: {}", acc_fc.id);
+        if is_duplicate_account(db, &acc_fc.id).await? {
+            info!("Account exists. Skipping");
             return Err(Error::Duplicate("Account already exists".to_string()));
         }
 
-        // insert the account
+        info!("Inserting account");
         match sqlx::query!(
             r"
                 INSERT INTO accounts (
@@ -100,4 +92,20 @@ impl AccountService for SqliteAccountService {
             }
         }
     }
+}
+
+// Check if an account is a duplicate
+async fn is_duplicate_account(db: &Pool<Sqlite>, acc_id: &str) -> Result<bool, Error> {
+    let existing_account = sqlx::query!(
+        r"
+            SELECT id
+            FROM accounts
+            WHERE id = $1
+        ",
+        acc_id,
+    )
+    .fetch_optional(db)
+    .await?;
+
+    Ok(existing_account.is_some())
 }
