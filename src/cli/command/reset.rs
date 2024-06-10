@@ -9,10 +9,9 @@ use std::path::Path;
 
 use crate::{configuration::get_configuration, error::AppError as Error, model::DatabasePool};
 
-pub async fn reset() -> Result<(), Error> {
+pub async fn reset() -> Result<DatabasePool, Error> {
     if !confirm_reset() {
-        println!("Aborting");
-        return Ok(());
+        return Err(Error::AbortError);
     }
 
     let config = get_configuration().expect("Failed to read configuration.");
@@ -24,10 +23,9 @@ pub async fn reset() -> Result<(), Error> {
         std::fs::remove_file(&file_path)?;
     }
 
-    match DatabasePool::new_from_config(config).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(Error::DbError(e.to_string())),
-    }
+    DatabasePool::new_from_config(config)
+        .await
+        .map_err(|e| Error::DbError(e.to_string()))
 }
 
 fn confirm_reset() -> bool {

@@ -35,7 +35,13 @@ async fn main() -> Result<(), Error> {
         },
         Commands::Reset {} => match command::reset().await {
             Ok(_) => println!("{}", "Database reset complete".green()),
-            Err(e) => eprintln!("{}", "ERROR: Failed to reset the database".red()),
+            Err(Error::AbortError) => println!("{}", "Database reset aborted".yellow()),
+            Err(e) => eprintln!(
+                "{} {} {}",
+                "ERROR:".red(),
+                "Failed to reset the database",
+                e.to_string()
+            ),
         },
     }
 

@@ -45,4 +45,8 @@ pub enum AppError {
 
     #[error("Database error")]
     DbError(String),
+
+    // -- Command error
+    #[error("Command aborted")]
+    AbortError,
 }
