@@ -1,4 +1,5 @@
 use clap::Parser;
+use colored::Colorize;
 
 use monzo::{
     cli::{command, Cli, Commands},
@@ -32,9 +33,10 @@ async fn main() -> Result<(), Error> {
             Ok(_) => println!("Auth completed"),
             Err(e) => eprintln!("Error: {}", e),
         },
-        Commands::Reset {} => {
-            command::reset(connection_pool).await;
-        }
+        Commands::Reset {} => match command::reset().await {
+            Ok(_) => println!("{}", "Database reset complete".green()),
+            Err(e) => eprintln!("{}", "ERROR: Failed to reset the database".red()),
+        },
     }
 
     Ok(())
