@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use tracing_log::log::{error, info};
 
 use super::DatabasePool;
 use crate::error::AppError as Error;
@@ -42,10 +43,30 @@ impl SqliteAccountService {
 // -- Service Implementations ----------------------------------------------------------
 
 impl AccountService for SqliteAccountService {
+    #[tracing::instrument(name = "Creating an account", skip(self, acc_fc), fields(id = %acc_fc.id))]
     async fn create_account(&self, acc_fc: &Account) -> Result<(), Error> {
         let db = self.pool.db();
 
-        sqlx::query!(
+        // return if the account already exists
+        info!("Checking if Account already exists: {}", acc_fc.id);
+        let existing_account = sqlx::query!(
+            r"
+                SELECT id
+                FROM accounts
+                WHERE id = $1
+            ",
+            acc_fc.id,
+        )
+        .fetch_optional(db)
+        .await?;
+
+        if existing_account.is_some() {
+            info!("Skipped existing account: {}", acc_fc.id);
+            return Err(Error::Duplicate("Account already exists".to_string()));
+        }
+
+        // insert the account
+        match sqlx::query!(
             r"
                 INSERT INTO accounts (
                     id,
@@ -67,8 +88,16 @@ impl AccountService for SqliteAccountService {
             acc_fc.sort_code,
         )
         .execute(db)
-        .await?;
-
-        Ok(())
+        .await
+        {
+            Ok(_) => {
+                info!("Created account: {}", acc_fc.id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to create account: {}", acc_fc.id);
+                Err(Error::DbError(e.to_string()))
+            }
+        }
     }
 }

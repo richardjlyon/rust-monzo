@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use rusty_money::{iso, Money};
+use tracing_log::log::{error, info};
 
 use crate::{
     client::{transactions::make_date_range, MonzoClient},
     error::AppError as Error,
     model::{
         account::{Account, AccountService, SqliteAccountService},
-        transaction::Transaction,
+        transaction::{SqliteTransactionService, Transaction, TransactionService},
         DatabasePool,
     },
 };
@@ -112,10 +113,26 @@ async fn persist_transactions(
     accounts: Vec<Account>,
     transactions: Vec<Transaction>,
 ) -> Result<(), Error> {
-    let service = SqliteAccountService::new(connection_pool);
+    let account_service = SqliteAccountService::new(connection_pool.clone());
+    let tx_service = SqliteTransactionService::new(connection_pool.clone());
 
     for account in accounts {
-        service.create_account(&account).await?;
+        match account_service.create_account(&account).await {
+            Ok(_) => info!("Added account: {}", account.id),
+            Err(Error::Duplicate(_)) => (),
+            Err(e) => {
+                error!("Adding account: {}", account.id);
+                return Err(e);
+            }
+        }
+    }
+
+    for tx in transactions {
+        match tx_service.create_transaction(&tx).await {
+            Ok(_) => (),
+            Err(Error::Duplicate(_)) => (),
+            Err(e) => return Err(e),
+        }
     }
 
     Ok(())
