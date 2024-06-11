@@ -35,7 +35,7 @@ pub mod test {
             .await
             .unwrap();
 
-        // pool.seed_initial_data().await;
+        pool.seed_initial_data().await;
 
         (pool, dir)
     }

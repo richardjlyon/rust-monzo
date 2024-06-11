@@ -14,7 +14,7 @@ pub struct Accounts {
     pub accounts: Vec<Account>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Account {
     pub id: String,
     pub closed: bool,
@@ -111,4 +111,26 @@ async fn is_duplicate_account(db: &Pool<Sqlite>, acc_id: &str) -> Result<bool, E
     .await?;
 
     Ok(existing_account.is_some())
+}
+
+// -- Tests ----------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::test::test_db;
+
+    #[tokio::test]
+    async fn create_accoun_workst() {
+        // Arrange
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteAccountService::new(pool);
+        let acc = Account::default();
+
+        // Act
+        let result = service.create_account(&acc).await;
+
+        // Assert
+        assert!(result.is_ok());
+    }
 }

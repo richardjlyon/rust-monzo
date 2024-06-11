@@ -9,7 +9,7 @@ use crate::error::AppError as Error;
 
 use super::DatabasePool;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Merchant {
     pub id: String,
     pub name: String,
@@ -18,7 +18,7 @@ pub struct Merchant {
     // pub address: Address,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Address {
     pub short_formatted: String,
     pub formatted: String,
@@ -166,54 +166,46 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_merchant() {
+        // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteMerchantService::new(pool);
+        let merchant = Merchant::default();
 
-        let merchant = Merchant {
-            id: "123".to_string(),
-            name: "Test Merchant".to_string(),
-            category: "Test Category".to_string(),
-        };
-
+        // Act
         let result = service.create_merchant(&merchant).await;
 
+        // Assert
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_get_merchant() {
+        // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteMerchantService::new(pool);
+        let merchant = Merchant::default();
 
-        let merchant = Merchant {
-            id: "123".to_string(),
-            name: "Test Merchant".to_string(),
-            category: "Test Category".to_string(),
-        };
-
+        // Act
         service.create_merchant(&merchant).await.unwrap();
-
         let result = service.get_merchant(&merchant.id).await;
 
+        // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().id, merchant.id);
+        assert_eq!(result.unwrap().unwrap().id, merchant.id);
     }
 
     #[tokio::test]
     async fn test_delete_all_merchants() {
+        // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteMerchantService::new(pool);
+        let merchant = Merchant::default();
 
-        let merchant = Merchant {
-            id: "123".to_string(),
-            name: "Test Merchant".to_string(),
-            category: "Test Category".to_string(),
-        };
-
+        //Act
         service.create_merchant(&merchant).await.unwrap();
-
         let result = service.delete_all_merchants().await;
 
+        // Assert
         assert!(result.is_ok());
     }
 }

@@ -39,7 +39,7 @@ pub struct Transaction {
     pub attachments: Option<Vec<Attachment>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Categories {
     #[serde(flatten)]
     _fields: HashMap<String, i32>,
@@ -258,5 +258,28 @@ async fn insert_merchant(db: &Pool<Sqlite>, merchant: &Merchant) -> Result<(), E
             error!("Failed to create merchant: {:?}", merchant.id);
             Err(Error::DbError(e.to_string()))
         }
+    }
+}
+
+// -- Tests ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::test::test_db;
+
+    #[tokio::test]
+    async fn create_transaction() {
+        // Arrange
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteTransactionService::new(pool);
+        let mut tx = Transaction::default();
+        tx.account_id = "1".to_string();
+
+        // Act
+        let result = service.create_transaction(&tx).await;
+
+        //Assert
+        assert!(result.is_ok());
     }
 }

@@ -1,3 +1,4 @@
+use account::Account;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
@@ -56,5 +57,37 @@ impl DatabasePool {
     /// (only for the model layer)
     pub fn db(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    pub async fn seed_initial_data(&self) {
+        let db = self.db();
+
+        // insert account
+        let account = Account {
+            id: "1".to_string(),
+            closed: false,
+            created: chrono::Utc::now(),
+            description: "Main Account".to_string(),
+            owner_type: "personal".to_string(),
+            account_number: "12345678".to_string(),
+            sort_code: "12-34-56".to_string(),
+        };
+
+        sqlx::query!(
+            r#"
+            INSERT INTO accounts (id, closed, created, description, owner_type, account_number, sort_code)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "#,
+            account.id,
+            account.closed,
+            account.created,
+            account.description,
+            account.owner_type,
+            account.account_number,
+            account.sort_code,
+        )
+        .execute(db)
+        .await
+        .expect("Failed to create test account");
     }
 }
