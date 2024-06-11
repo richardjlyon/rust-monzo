@@ -1,5 +1,5 @@
 //! Models for the transaction endpoint
-
+#![allow(dead_code)]
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
@@ -39,23 +39,17 @@ pub struct Transaction {
     #[serde(deserialize_with = "deserialize_optional_datetime")]
     pub updated: Option<DateTime<Utc>>,
     pub category: String,
-    pub categories: Categories,
+    pub categories: HashMap<String, i32>,
     pub attachments: Option<Vec<Attachment>>,
-}
-
-#[derive(Deserialize, Debug, Default)]
-pub struct Categories {
-    #[serde(flatten)]
-    _fields: HashMap<String, i32>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Attachment {
-    _id: String,
-    _external_id: String,
-    _file_url: String,
-    _file_type: String,
-    _created: DateTime<Utc>,
+    id: String,
+    external_id: String,
+    file_url: String,
+    file_type: String,
+    created: DateTime<Utc>,
 }
 
 // -- Services -------------------------------------------------------------------------

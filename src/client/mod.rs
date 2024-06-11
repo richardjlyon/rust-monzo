@@ -10,7 +10,6 @@ use serde::Deserialize;
 use tracing_log::log::{error, info};
 
 use crate::configuration::get_config;
-// use crate::error::AppError as Error;
 
 mod accounts;
 mod balance;
@@ -62,12 +61,22 @@ impl Monzo {
     async fn handle_response<T: DeserializeOwned>(response: Response) -> Result<T, Error> {
         if response.status().is_success() {
             info!("Response is successful");
-            let result = response.json::<T>().await?;
+            let j = response.text().await?;
+            let jd = &mut serde_json::Deserializer::from_str(&j);
+            let result = match serde_path_to_error::deserialize(jd) {
+                Ok(result) => result,
+                Err(e) => {
+                    error!("unable to parse response: {:?}", e);
+                    info!("Response content: {}", j);
+                    return Err(Error::HandlerError);
+                }
+            };
             Ok(result)
         } else {
-            let error_json = response.json::<ErrorJson>().await?;
-            // Err(AnyError::msg(format!("Error: {:?}", error_json)))
-            error!("Response error: {:?}", error_json);
+            // set up serde_path_to_error
+            // TODO: Implement error handling for Monzo API
+            let j = response.text().await?;
+            error!("Response error: {:?}", j);
             Err(Error::HandlerError)
         }
     }

@@ -14,7 +14,15 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Update transactions
-    Update {},
+    Update {
+        /// Flag to update all transactions
+        #[arg(short, long)]
+        all: bool,
+
+        /// Days to get (optional, defaults to configuration setting `default_days_to_update`)
+        #[arg(short, long)]
+        days: Option<i64>,
+    },
     /// Account balances
     Balances {},
     /// (Re)authorise the application

@@ -41,7 +41,7 @@ mod test {
     use crate::tests::test::get_client;
 
     #[tokio::test]
-    #[ignore]
+    // #[ignore]
     async fn accounts_work() {
         // Arrange
         let monzo = get_client();

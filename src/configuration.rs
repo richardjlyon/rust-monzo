@@ -1,22 +1,25 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppErrors as Error;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
+    pub start_date: DateTime<Utc>,
+    pub default_days_to_update: i64,
     pub database: Database,
     pub oath_credentials: OathCredentials,
     pub access_tokens: AccessTokens,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Database {
     pub database_path: String,
     pub max_connections: u32,
 }
 
 /// Structure for representing the components of the Oath client
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OathCredentials {
     pub client_id: String,
     pub client_secret: String,

@@ -6,11 +6,13 @@
 
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
+use chrono_intervals::{Grouping, IntervalGenerator};
 use rusty_money::{iso, Money};
 use tracing_log::log::{error, info};
 
 use crate::{
-    client::{transactions::make_date_range, Monzo},
+    client::Monzo,
     error::AppErrors as Error,
     model::{
         account::{Account, Service as AccountService, SqliteAccountService},
@@ -21,13 +23,20 @@ use crate::{
 
 /// Update transactions
 ///
-/// This function will fetch all transactions from Monzo, print them to the console,
-/// and persist them to the database.
+/// This function will fetch transactions from Monzo between the given dates,
+/// print them to the console, and persist them to the database.
 ///
 /// # Errors
 /// Will return errors if the transactions cannot be fetched or persisted.
-pub async fn update(connection_pool: DatabasePool) -> Result<(), Error> {
-    let (transactions, accounts, account_descriptions) = get_sorted_transactions().await?;
+pub async fn update(
+    connection_pool: DatabasePool,
+    since: &DateTime<Utc>,
+    before: &DateTime<Utc>,
+) -> Result<(), Error> {
+    let (transactions, accounts, account_descriptions) =
+        get_sorted_transactions(since, before).await?;
+
+    info!("->> Fetched {} transactions", transactions.len());
 
     print_transactions(&transactions, &account_descriptions)?;
     persist_transactions(connection_pool, accounts, transactions).await?;
@@ -36,28 +45,42 @@ pub async fn update(connection_pool: DatabasePool) -> Result<(), Error> {
 }
 
 // Get all transactions sorted by date
+#[tracing::instrument(name = "get sorted transactions")]
 async fn get_sorted_transactions(
+    since: &DateTime<Utc>,
+    before: &DateTime<Utc>,
 ) -> Result<(Vec<Transaction>, Vec<Account>, HashMap<String, String>), Error> {
     let monzo = Monzo::new()?;
     let accounts = monzo.accounts().await?;
     let account_descriptions = monzo.account_description_from_id().await?;
-    let (since, before) = make_date_range(2024, 5);
     let mut txs: Vec<Transaction> = Vec::new();
 
-    for account in monzo.accounts().await? {
-        let transactions = monzo.transactions(&account.id, since, before, None).await?;
+    let monthly_intervals = IntervalGenerator::new()
+        .with_grouping(Grouping::PerMonth)
+        .get_intervals(*since, *before);
 
-        for tx in transactions {
-            if tx.amount == 0 {
-                continue;
+    for account in &accounts {
+        for (since, before) in monthly_intervals.clone() {
+            let transactions = monzo
+                .transactions(&account.id, &since, &before, None)
+                .await?;
+
+            info!("Fetched {} transactions", &transactions.len());
+
+            for tx in transactions {
+                if tx.amount == 0 {
+                    continue;
+                }
+
+                txs.push(tx);
             }
-
-            txs.push(tx);
         }
     }
 
     // sort by date
     txs.sort_by(|a, b| a.created.cmp(&b.created));
+
+    info!("END");
 
     Ok((txs, accounts, account_descriptions))
 }

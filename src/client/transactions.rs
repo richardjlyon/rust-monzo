@@ -2,7 +2,8 @@
 //!
 //! This module gets transaction information from the Monzo API.
 
-use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+use chrono::{DateTime, Utc};
+use tracing_log::log::info;
 
 use super::Monzo;
 use crate::error::AppErrors as Error;
@@ -15,83 +16,64 @@ impl Monzo {
     pub async fn transactions(
         &self,
         account_id: &str,
-        since: DateTime<Utc>,
-        before: DateTime<Utc>,
+        since: &DateTime<Utc>,
+        before: &DateTime<Utc>,
         limit: Option<u32>,
     ) -> Result<Vec<Transaction>, Error> {
-        let since = since.to_rfc3339_opts(SecondsFormat::Secs, true);
-        let before = before.to_rfc3339_opts(SecondsFormat::Secs, true);
-        let limit = limit.unwrap_or(100);
-
         let url = format!(
             "{}transactions?account_id={}&since={}&before={}&limit={}&expand[]=merchant",
-            self.base_url, account_id, since, before, limit
+            self.base_url,
+            account_id,
+            since.format("%Y-%m-%dT%H:%M:%SZ"),
+            before.format("%Y-%m-%dT%H:%M:%SZ"),
+            limit.unwrap_or(100)
         );
+        info!("url: {}", url);
 
         let response = self.client.get(&url).send().await?;
+
         let transactions: Transactions = Self::handle_response(response).await?;
 
         Ok(transactions.transactions)
     }
 }
 
-// Generate a date range for the given year and month
-// Returns a tuple of (since, before) DateTime<Utc> to work with the Monzo API transactions endpoint
-#[must_use]
-pub fn make_date_range(year: i32, month: u32) -> (DateTime<Utc>, DateTime<Utc>) {
-    let length_seconds = 60 * 60 * 24 * num_days_in_month(year, month);
-
-    let since = Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
-    let before = since + chrono::Duration::seconds(i64::from(length_seconds) + 1);
-
-    (since, before)
-}
-
-// Compute the number of days in a month for the given year and month, acocunting for leap years
-fn num_days_in_month(year: i32, month: u32) -> u32 {
-    match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 => {
-            if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) {
-                29
-            } else {
-                28
-            }
-        }
-        _ => panic!("Invalid month"),
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use chrono::{TimeZone, Utc};
+    use chrono::DateTime;
+    use chrono_intervals::{Grouping, IntervalGenerator};
 
-    use crate::tests::{self, test::get_client};
+    use crate::{
+        model::transaction::Transaction,
+        tests::{self, test::get_client},
+    };
 
     #[tokio::test]
     async fn transactions_work() {
         let monzo = get_client();
         let (pool, _tmp) = tests::test::test_db().await;
 
+        let mut txs: Vec<Transaction> = Vec::new();
         let account_id = "acc_0000AdNaq81vwtbTBedL06";
-        let (since, before) = super::make_date_range(2024, 5);
-        let transactions = monzo
-            .transactions(account_id, since, before, None)
-            .await
-            .unwrap();
 
-        assert!(transactions.len() > 0);
-    }
+        let since = DateTime::parse_from_rfc3339("2024-04-01T12:23:45.000000-07:00").unwrap();
+        let before = DateTime::parse_from_rfc3339("2024-05-21T12:23:45.000000-07:00").unwrap();
+        let monthly_intervals = IntervalGenerator::new()
+            .with_grouping(Grouping::PerMonth)
+            .get_intervals(since, before);
 
-    #[test]
-    fn date_range_works() {
-        let (since, before) = super::make_date_range(2024, 5);
+        println!("->> {:?}", monthly_intervals.clone());
 
-        let since_expected = Utc.with_ymd_and_hms(2024, 5, 1, 0, 0, 0).unwrap();
-        let before_expected = Utc.with_ymd_and_hms(2024, 6, 1, 0, 0, 1).unwrap();
+        for (since, before) in monthly_intervals.clone() {
+            println!("->> {} - {}", since, before);
+            let transactions = monzo
+                .transactions(account_id, &since, &before, None)
+                .await
+                .unwrap();
 
-        assert_eq!(since, since_expected);
-        assert_eq!(before, before_expected);
+            txs.extend(transactions);
+        }
+
+        assert!(txs.len() > 0);
     }
 }

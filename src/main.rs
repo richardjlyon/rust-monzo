@@ -16,7 +16,7 @@ async fn main() -> Result<(), Error> {
 
     let configuration = get_config().expect("Failed to read configuration.");
 
-    let connection_pool = DatabasePool::new_from_config(configuration).await?;
+    let connection_pool = DatabasePool::new_from_config(configuration.clone()).await?;
 
     let cli = Cli::parse();
 
@@ -25,10 +25,23 @@ async fn main() -> Result<(), Error> {
             Ok(_) => {}
             Err(e) => eprintln!("Error: {}", e),
         },
-        Commands::Update {} => match command::update(connection_pool).await {
-            Ok(_) => {}
-            Err(e) => eprintln!("Error: {}", e),
-        },
+        Commands::Update { all, days } => {
+            let mut before = chrono::Utc::now();
+            let mut since =
+                before - chrono::Duration::days(configuration.clone().default_days_to_update);
+
+            if *all {
+                since = configuration.clone().start_date;
+                before = chrono::Utc::now();
+            } else if let Some(days) = days {
+                since = before - chrono::Duration::days(*days);
+            }
+
+            match command::update(connection_pool, &since, &before).await {
+                Ok(_) => {}
+                Err(e) => eprintln!("Error: {}", e),
+            }
+        }
         Commands::Auth {} => match command::auth().await {
             Ok(_) => println!("Auth completed"),
             Err(e) => eprintln!("Error: {}", e),

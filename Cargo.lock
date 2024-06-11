@@ -320,6 +320,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chrono-intervals"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51df6da6c1df48aaac2d9366f5df7bb016e30659f62911177808a4a5f0e849b6"
+dependencies = [
+ "chrono",
+]
+
+[[package]]
 name = "clap"
 version = "4.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1246,6 +1255,7 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
+ "chrono-intervals",
  "clap",
  "colored",
  "config",
@@ -1258,6 +1268,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
+ "serde_path_to_error",
  "serde_yaml",
  "sqlx",
  "temp-dir",

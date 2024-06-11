@@ -30,8 +30,8 @@ pub enum AppErrors {
     #[error("Handler error")]
     HandlerError,
 
-    #[error("Reqwest error")]
-    ReqwestError(#[from] reqwest::Error),
+    #[error("Reqwest error: {0}")]
+    ReqwestError(String),
 
     #[error("Server error")]
     ServerError,
@@ -71,4 +71,11 @@ pub enum AppErrors {
 
     #[error("Input error")]
     InputError(#[from] dialoguer::Error),
+}
+
+// Implementing From<reqwest::Error> for MyError
+impl From<reqwest::Error> for AppErrors {
+    fn from(error: reqwest::Error) -> Self {
+        AppErrors::ReqwestError(error.to_string())
+    }
 }
