@@ -3,18 +3,18 @@ use colored::Colorize;
 
 use monzo::{
     cli::{command, Cli, Commands},
-    configuration::get_configuration,
-    error::AppError as Error,
+    configuration::get_config,
+    error::AppErrors as Error,
     model::DatabasePool,
     telemetry::{get_subscriber, init_subscriber},
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let subscriber = get_subscriber("monzo".into(), "error".into(), || std::io::stdout());
-    init_subscriber(subscriber);
+    let subscriber = get_subscriber("monzo".into(), "error".into(), std::io::stdout);
+    init_subscriber(subscriber)?;
 
-    let configuration = get_configuration().expect("Failed to read configuration.");
+    let configuration = get_config().expect("Failed to read configuration.");
 
     let connection_pool = DatabasePool::new_from_config(configuration).await?;
 
@@ -36,12 +36,7 @@ async fn main() -> Result<(), Error> {
         Commands::Reset {} => match command::reset().await {
             Ok(_) => println!("{}", "Database reset complete".green()),
             Err(Error::AbortError) => println!("{}", "Database reset aborted".yellow()),
-            Err(e) => eprintln!(
-                "{} {} {}",
-                "ERROR:".red(),
-                "Failed to reset the database",
-                e.to_string()
-            ),
+            Err(e) => eprintln!("{} Failed to reset the database {}", "ERROR:".red(), e),
         },
     }
 

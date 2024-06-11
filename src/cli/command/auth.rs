@@ -4,25 +4,31 @@
 //! for an authorisation token, and persist it to the configuration file.
 
 use std::collections::HashMap;
+use std::option::Option;
 use std::sync::Arc;
 use tokio::sync::watch;
 use url::Url;
 use uuid::Uuid;
 
-use crate::configuration::{get_configuration, AccessTokens};
-use crate::error::AppError as Error;
+use crate::configuration::{get_config, AccessTokens};
+use crate::error::AppErrors as Error;
 use crate::routes::oauth_callback;
 use axum::{routing::get, Router};
 
 #[derive(Clone)]
-pub struct AuthState {
+pub struct AuthorisationState {
     pub token_tx: Arc<watch::Sender<Option<AccessTokens>>>,
 }
 
+/// Authenticate with Monzo
+///
+/// # Errors
+///
+/// Will return errors if the configuration file does not exist or cannot be written to.
 pub async fn auth() -> Result<(), Error> {
     let access_tokens = get_access_tokens().await?;
 
-    let mut config = get_configuration()?;
+    let mut config = get_config()?;
     config.access_tokens = access_tokens;
     let file = std::fs::File::create("configuration.yaml")?;
     serde_yaml::to_writer(file, &config)?;
@@ -37,16 +43,14 @@ pub async fn auth() -> Result<(), Error> {
 // Implementation note: We fire up a server to listen for the OAuth callback and implement a watch channel to allow
 // it to signal when the access tokens are received.
 async fn get_access_tokens() -> Result<AccessTokens, Error> {
-    let config = get_configuration().unwrap();
+    let config = get_config()?;
 
     // Create server
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
 
     let (token_tx, mut token_rx) = watch::channel(None);
 
-    let state = AuthState {
+    let state = AuthorisationState {
         token_tx: Arc::new(token_tx),
     };
 
@@ -63,9 +67,8 @@ async fn get_access_tokens() -> Result<AccessTokens, Error> {
             open_login_page(
                 &config.oath_credentials.client_id,
                 &config.oath_credentials.redirect_uri,
-            )
-            .await;
-            token_rx.wait_for(|v| v.is_some()).await
+            );
+            token_rx.wait_for(Option::is_some).await
         } => {
             access_tokens.map(|v| v.as_ref().expect("checked Some above").to_owned()).map_err(|e| Error::AccessTokenError(e.to_string()))
         }
@@ -82,7 +85,7 @@ fn generate_url(params: &HashMap<&str, &str>) -> String {
     url.to_string()
 }
 
-async fn open_login_page(client_id: &str, redirect_uri: &str) {
+fn open_login_page(client_id: &str, redirect_uri: &str) {
     let state = Uuid::new_v4().to_string();
 
     let mut params = HashMap::new();

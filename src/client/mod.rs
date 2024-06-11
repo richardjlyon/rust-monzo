@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 use core::fmt;
 use reqwest::header::{self, HeaderMap, HeaderValue};
 use reqwest::Response;
@@ -9,7 +9,7 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use tracing_log::log::{error, info};
 
-use crate::configuration::get_configuration;
+use crate::configuration::get_config;
 // use crate::error::AppError as Error;
 
 mod accounts;
@@ -31,28 +31,31 @@ impl fmt::Display for ErrorJson {
     }
 }
 
-pub struct MonzoClient {
+pub struct Monzo {
     base_url: String,
     client: reqwest::Client,
 }
 
-impl MonzoClient {
+impl Monzo {
+    /// Create a new Monzo client
+    ///
+    /// # Errors
+    /// Will return an error if the auth header can't be created or the client can't be built.
     pub fn new() -> Result<Self, Error> {
         let base_url = "https://api.monzo.com/".to_string();
-        let config = get_configuration().unwrap();
+        let config = get_config()?;
         let mut headers = HeaderMap::new();
         let auth_header_value = format!("Bearer {}", config.access_tokens.access_token);
         headers.insert(
             header::AUTHORIZATION,
-            HeaderValue::from_str(&auth_header_value).expect("Failed to create header value"),
+            HeaderValue::from_str(&auth_header_value)?,
         );
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
-            .build()
-            .expect("Failed to build client");
+            .build()?;
 
-        Ok(MonzoClient { base_url, client })
+        Ok(Monzo { base_url, client })
     }
 
     #[tracing::instrument(name = "Handle response", skip(response))]

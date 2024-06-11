@@ -6,6 +6,8 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Registry};
 
+use crate::error::AppErrors as Error;
+
 /// Compose multiple layers into a `tracing`'s subscriber.
 ///
 /// # Implementation Notes
@@ -16,6 +18,8 @@ use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Regis
 /// We need to explicitly call out that the returned subscriber is
 /// `Send` and `Sync` to make it possible to pass it to `init_subscriber`
 /// later on.
+///
+///
 pub fn get_subscriber<Sink>(
     name: String,
     env_filter: String,
@@ -37,7 +41,12 @@ where
 /// Register a subscriber as global default to process span data.
 ///
 /// It should only be called once!
-pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
-    LogTracer::init().expect("Failed to set logger");
-    set_global_default(subscriber).expect("Failed to set subscriber");
+///
+/// # Errors
+/// Will return an error if the subscriber fails to be set as the global default.
+pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) -> Result<(), Error> {
+    LogTracer::init()?;
+    set_global_default(subscriber)?;
+
+    Ok(())
 }

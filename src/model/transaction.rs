@@ -7,15 +7,19 @@ use sqlx::{Pool, Sqlite};
 use std::collections::HashMap;
 use tracing_log::log::{error, info};
 
-use super::{merchant::Merchant, DatabasePool};
-use crate::error::AppError as Error;
+use super::{
+    merchant::{Merchant, Service as MerchantService, SqliteMerchantService},
+    DatabasePool,
+};
+use crate::error::AppErrors as Error;
 
 #[derive(Deserialize, Debug)]
 pub struct Transactions {
     pub transactions: Vec<Transaction>,
 }
 
-#[derive(Deserialize, Debug)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Transaction {
     pub id: String,
     pub dedupe_id: String,
@@ -57,7 +61,7 @@ pub struct Attachment {
 // -- Services -------------------------------------------------------------------------
 
 #[async_trait]
-pub trait TransactionService {
+pub trait Service {
     async fn create_transaction(&self, tx_fc: &Transaction) -> Result<(), Error>;
     async fn delete_all_transactions(&self) -> Result<(), Error>;
 }
@@ -68,6 +72,7 @@ pub struct SqliteTransactionService {
 }
 
 impl SqliteTransactionService {
+    #[must_use]
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
@@ -76,7 +81,7 @@ impl SqliteTransactionService {
 // -- Service Implementations ----------------------------------------------------------
 
 #[async_trait]
-impl TransactionService for SqliteTransactionService {
+impl Service for SqliteTransactionService {
     #[tracing::instrument(
         name = "Create transaction",
         skip(self, tx_fc),
@@ -91,14 +96,18 @@ impl TransactionService for SqliteTransactionService {
         }
 
         // if the transaction has a merchant and it doesn't exist in the db...
-        if let Some(merchant_id) = transaction_merchant_id(&tx_fc) {
-            if !merchant_exists(db, &merchant_id).await? {
+        if let Some(merchant_id) = transaction_merchant_id(tx_fc) {
+            if !merchant_exists(&self.pool, &merchant_id).await? {
                 // ...insert the merchant
-                insert_merchant(db, &tx_fc.merchant.as_ref().unwrap()).await?;
+                let merchant = tx_fc
+                    .merchant
+                    .as_ref()
+                    .expect("Merchant not found in transaction");
+                insert_merchant(&self.pool, merchant).await?;
             }
         }
 
-        let merchant_id = transaction_merchant_id(&tx_fc);
+        let merchant_id = transaction_merchant_id(tx_fc);
 
         info!("Inserting transaction");
         match sqlx::query!(
@@ -184,8 +193,7 @@ where
         Some(s) => match DateTime::parse_from_rfc3339(s) {
             Ok(dt) => Ok(Some(dt.with_timezone(&Utc))),
             Err(_) => Err(serde::de::Error::custom(format!(
-                "invalid date-time format: {}",
-                s
+                "invalid date-time format: {s}"
             ))),
         },
     }
@@ -209,56 +217,21 @@ async fn is_duplicate_transaction(db: &Pool<Sqlite>, tx_id: &str) -> Result<bool
 
 // check if a transaction has a merchant
 fn transaction_merchant_id(transaction: &Transaction) -> Option<String> {
-    transaction
-        .merchant
-        .as_ref()
-        .map_or(None, |m| Some(m.id.clone()))
+    transaction.merchant.as_ref().map(|m| m.id.clone())
 }
 
 // check if a merchant exists
-async fn merchant_exists(db: &Pool<Sqlite>, merchant_id: &str) -> Result<bool, Error> {
-    let merchant = sqlx::query!(
-        r"
-                SELECT id
-                FROM merchants
-                WHERE id = $1
-            ",
-        merchant_id,
-    )
-    .fetch_optional(db)
-    .await?;
+async fn merchant_exists(db: &DatabasePool, merchant_id: &str) -> Result<bool, Error> {
+    let merchant_service = SqliteMerchantService::new(db.clone());
+    let merchant = merchant_service.get_merchant(merchant_id).await?;
 
     Ok(merchant.is_some())
 }
 
 // insert a merchant
-#[tracing::instrument(name = "Insert merchant", skip(db, merchant))]
-async fn insert_merchant(db: &Pool<Sqlite>, merchant: &Merchant) -> Result<(), Error> {
-    match sqlx::query!(
-        r"
-            INSERT INTO merchants (
-                id,
-                name,
-                category
-            )
-            VALUES ($1, $2, $3)
-        ",
-        merchant.id,
-        merchant.name,
-        merchant.category,
-    )
-    .execute(db)
-    .await
-    {
-        Ok(_) => {
-            info!("Created merchant: {:?}", merchant.id);
-            Ok(())
-        }
-        Err(e) => {
-            error!("Failed to create merchant: {:?}", merchant.id);
-            Err(Error::DbError(e.to_string()))
-        }
-    }
+async fn insert_merchant(db: &DatabasePool, merchant: &Merchant) -> Result<(), Error> {
+    let merchant_service = SqliteMerchantService::new(db.clone());
+    merchant_service.create_merchant(merchant).await
 }
 
 // -- Tests ----------------------------------------------------------------------------

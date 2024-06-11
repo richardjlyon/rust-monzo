@@ -4,13 +4,16 @@
 
 use std::collections::HashMap;
 
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 use crate::model::account::{Account, Accounts};
 
-use super::MonzoClient;
+use super::Monzo;
 
-impl MonzoClient {
+impl Monzo {
     /// Get a list of accounts
+    ///
+    /// # Errors
+    /// Will return errors if authentication fails or the Monzo API cannot be reached.
     pub async fn accounts(&self) -> Result<Vec<Account>, Error> {
         let url = format!("{}accounts", self.base_url);
         let response = self.client.get(&url).send().await?;
@@ -20,6 +23,9 @@ impl MonzoClient {
     }
 
     /// Generate a hash of account IDs and descriptions
+    ///
+    /// # Errors
+    /// Will return errors if authentication fails or the Monzo API cannot be reached.
     pub async fn account_description_from_id(&self) -> Result<HashMap<String, String>, Error> {
         let mut accounts = HashMap::new();
         for account in self.accounts().await? {

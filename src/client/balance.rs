@@ -2,11 +2,15 @@
 //!
 //! This module gets balance information from the Monzo API.
 
-use super::MonzoClient;
-use crate::error::AppError as Error;
+use super::Monzo;
+use crate::error::AppErrors as Error;
 use crate::model::balance::Balance;
 
-impl MonzoClient {
+impl Monzo {
+    /// Get the balance of an account
+    ///
+    /// # Errors
+    /// Will return errors if authentication fails or the Monzo API cannot be reached.
     pub async fn balance(&self, account_id: &str) -> Result<Balance, Error> {
         let url = format!("{}balance?account_id={}", self.base_url, account_id);
         let response = self.client.get(&url).send().await?;

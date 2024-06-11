@@ -6,10 +6,10 @@ use reqwest::Response;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 use crate::{
-    cli::command::auth::AuthState,
-    configuration::{get_configuration, AccessTokens, OathCredentials},
+    cli::command::auth::AuthorisationState,
+    configuration::{get_config, AccessTokens, OathCredentials},
 };
 
 // Structure for representing the authcode request response
@@ -23,14 +23,14 @@ pub struct AuthCodeResponse {
 // oath callback function - handles the auth code response
 pub async fn oauth_callback(
     Query(params): Query<AuthCodeResponse>,
-    State(state): State<AuthState>,
+    State(state): State<AuthorisationState>,
 ) -> Html<String> {
     match exchange_auth_code_for_access_token(&params).await {
         Ok(token) => {
             _ = state.token_tx.send(Some(token));
             "success".to_string().into()
         }
-        Err(e) => format!("Error getting access token: {}", e).into(),
+        Err(e) => format!("Error getting access token: {e}").into(),
     }
 }
 
@@ -38,14 +38,15 @@ async fn exchange_auth_code_for_access_token(
     params: &AuthCodeResponse,
 ) -> Result<AccessTokens, Error> {
     let response = submit_access_token_request(params).await?;
-    match response.status().is_success() {
-        true => Ok(response.json::<AccessTokens>().await?),
-        false => Err(Error::AuthCodeExchangeError),
+    if response.status().is_success() {
+        Ok(response.json::<AccessTokens>().await?)
+    } else {
+        Err(Error::AuthCodeExchangeError)
     }
 }
 
 async fn submit_access_token_request(params: &AuthCodeResponse) -> Result<Response, Error> {
-    let config = get_configuration().unwrap();
+    let config = get_config()?;
 
     let url = "https://api.monzo.com/oauth2/token";
     let code = params.code.clone();

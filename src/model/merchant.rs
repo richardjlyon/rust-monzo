@@ -5,11 +5,11 @@ use serde::Deserialize;
 use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
 
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 
 use super::DatabasePool;
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Merchant {
     pub id: String,
     pub name: String,
@@ -18,7 +18,7 @@ pub struct Merchant {
     // pub address: Address,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Address {
     pub short_formatted: String,
     pub formatted: String,
@@ -34,9 +34,9 @@ pub struct Address {
 // -- Services -------------------------------------------------------------------------
 
 #[async_trait]
-pub trait MerchantService {
+pub trait Service {
     async fn create_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error>;
-    async fn get_merchant(&self, merchant_id: &str) -> Result<Merchant, Error>;
+    async fn get_merchant(&self, merchant_id: &str) -> Result<Option<Merchant>, Error>;
     async fn delete_all_merchants(&self) -> Result<(), Error>;
 }
 
@@ -46,6 +46,7 @@ pub struct SqliteMerchantService {
 }
 
 impl SqliteMerchantService {
+    #[must_use]
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
@@ -54,7 +55,7 @@ impl SqliteMerchantService {
 // -- Service Implementations ----------------------------------------------------------
 
 #[async_trait]
-impl MerchantService for SqliteMerchantService {
+impl Service for SqliteMerchantService {
     #[tracing::instrument(
         name = "Create merchant",
         skip(self, merchant_fc),
@@ -96,10 +97,10 @@ impl MerchantService for SqliteMerchantService {
     }
 
     #[tracing::instrument(name = "Get merchant")]
-    async fn get_merchant(&self, merchant_id: &str) -> Result<Merchant, Error> {
+    async fn get_merchant(&self, merchant_id: &str) -> Result<Option<Merchant>, Error> {
         let db = self.pool.db();
 
-        match sqlx::query_as!(
+        let merchant = sqlx::query_as!(
             Merchant,
             r"
                 SELECT id, name, category
@@ -108,18 +109,10 @@ impl MerchantService for SqliteMerchantService {
             ",
             merchant_id,
         )
-        .fetch_one(db)
-        .await
-        {
-            Ok(merchant) => {
-                info!("Got merchant id: {}", merchant.id);
-                Ok(merchant)
-            }
-            Err(e) => {
-                error!("Failed to get merchant: {}", e.to_string());
-                Err(Error::DbError(e.to_string()))
-            }
-        }
+        .fetch_optional(db)
+        .await?;
+
+        Ok(merchant)
     }
 
     #[tracing::instrument(name = "Delete all merchants")]

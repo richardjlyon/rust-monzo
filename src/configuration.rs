@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
@@ -34,7 +34,11 @@ pub struct AccessTokens {
     pub user_id: String,
 }
 
-pub fn get_configuration() -> Result<Settings, Error> {
+/// Get the configuration from the configuration file
+///
+/// # Errors
+/// Will return errors if the config can't be read or deserialised.
+pub fn get_config() -> Result<Settings, Error> {
     // Initialise our configuration reader
     let settings = config::Config::builder()
         // Add configuration values from a file named `configuration.yaml`.
@@ -42,7 +46,6 @@ pub fn get_configuration() -> Result<Settings, Error> {
             "configuration.yaml",
             config::FileFormat::Yaml,
         ))
-        .build()
-        .expect("Failed to build configuration."); // FIXME map error
+        .build()?;
     Ok(settings.try_deserialize::<Settings>()?)
 }

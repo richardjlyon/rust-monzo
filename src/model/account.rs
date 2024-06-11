@@ -7,7 +7,7 @@ use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
 
 use super::DatabasePool;
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 
 #[derive(Deserialize, Debug)]
 pub struct Accounts {
@@ -28,7 +28,7 @@ pub struct Account {
 // -- Services ------------------------------------------------
 
 #[async_trait]
-pub trait AccountService {
+pub trait Service {
     async fn create_account(&self, acc_fc: &Account) -> Result<(), Error>;
 }
 
@@ -38,6 +38,7 @@ pub struct SqliteAccountService {
 }
 
 impl SqliteAccountService {
+    #[must_use]
     pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
@@ -46,7 +47,7 @@ impl SqliteAccountService {
 // -- Service Implementations ----------------------------------------------------------
 
 #[async_trait]
-impl AccountService for SqliteAccountService {
+impl Service for SqliteAccountService {
     #[tracing::instrument(
         name = "Creating account",
         skip(self, acc_fc),

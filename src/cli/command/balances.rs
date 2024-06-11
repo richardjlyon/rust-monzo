@@ -5,11 +5,16 @@
 
 use rusty_money::{iso, Money};
 
-use crate::client::MonzoClient;
-use crate::error::AppError as Error;
+use crate::client::Monzo;
+use crate::error::AppErrors as Error;
 
+/// Get balances
+///
+/// # Errors
+/// Will return errors if the Monzo API cannot be reached.
+///
 pub async fn balances() -> Result<(), Error> {
-    let monzo = MonzoClient::new()?;
+    let monzo = Monzo::new()?;
 
     let mut balance_total = 0;
 
@@ -19,9 +24,11 @@ pub async fn balances() -> Result<(), Error> {
     // Display accounts
     for account in monzo.accounts().await? {
         let balance = monzo.balance(&account.id).await?;
-        balance_total = balance_total + balance.balance;
+        balance_total += balance.balance;
 
-        let iso_code = iso::find(&balance.currency).unwrap();
+        let Some(iso_code) = iso::find(&balance.currency) else {
+            return Err(Error::CurrencyNotFound(balance.currency));
+        };
         let balance_fmt = Money::from_minor(balance.balance, iso_code).to_string();
         let spend_today_fmt = Money::from_minor(balance.spend_today, iso_code).to_string();
 
@@ -35,8 +42,10 @@ pub async fn balances() -> Result<(), Error> {
             if pot.deleted {
                 continue;
             }
-            balance_total = balance_total + pot.balance;
-            let iso_code = iso::find(&balance.currency).unwrap();
+            balance_total += pot.balance;
+            let Some(iso_code) = iso::find(&balance.currency) else {
+                return Err(Error::CurrencyNotFound(balance.currency));
+            };
             let balance_fmt = Money::from_minor(pot.balance, iso_code).to_string();
 
             println!("- {:<18}: {:>11}", pot.name.to_lowercase(), balance_fmt);

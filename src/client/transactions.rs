@@ -4,11 +4,11 @@
 
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 
-use super::MonzoClient;
-use crate::error::AppError as Error;
+use super::Monzo;
+use crate::error::AppErrors as Error;
 use crate::model::transaction::{Transaction, Transactions};
 
-impl MonzoClient {
+impl Monzo {
     /// Get maximum of [limit] transactions for the given account ID within the given date range
     /// Note: This will expand the merchant field for each transaction
     #[tracing::instrument(name = "Get transactions", skip(self))]
@@ -21,10 +21,7 @@ impl MonzoClient {
     ) -> Result<Vec<Transaction>, Error> {
         let since = since.to_rfc3339_opts(SecondsFormat::Secs, true);
         let before = before.to_rfc3339_opts(SecondsFormat::Secs, true);
-        let limit = match limit {
-            Some(l) => l,
-            None => 100,
-        };
+        let limit = limit.unwrap_or(100);
 
         let url = format!(
             "{}transactions?account_id={}&since={}&before={}&limit={}&expand[]=merchant",
@@ -40,11 +37,12 @@ impl MonzoClient {
 
 // Generate a date range for the given year and month
 // Returns a tuple of (since, before) DateTime<Utc> to work with the Monzo API transactions endpoint
+#[must_use]
 pub fn make_date_range(year: i32, month: u32) -> (DateTime<Utc>, DateTime<Utc>) {
     let length_seconds = 60 * 60 * 24 * num_days_in_month(year, month);
 
     let since = Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
-    let before = since + chrono::Duration::seconds(length_seconds as i64 + 1);
+    let before = since + chrono::Duration::seconds(i64::from(length_seconds) + 1);
 
     (since, before)
 }

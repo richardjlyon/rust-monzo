@@ -5,7 +5,7 @@ use sqlx::{
 };
 
 use crate::configuration::Settings;
-use crate::error::AppError as Error;
+use crate::error::AppErrors as Error;
 
 pub mod account;
 pub mod balance;
@@ -40,11 +40,15 @@ impl DatabasePool {
         // add a few pragmas
 
         // do a migration
-        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await?;
 
         Ok(DatabasePool { pool })
     }
 
+    /// Create a new database pool from the information in configuration
+    ///
+    /// # Errors
+    /// Will return an error if configuration is not valid or the pool can't be created
     pub async fn new_from_config(config: Settings) -> Result<Self, Error> {
         Self::new(
             &config.database.database_path,
@@ -55,11 +59,16 @@ impl DatabasePool {
 
     /// Returns the sqlx db pool reference
     /// (only for the model layer)
+    #[must_use]
     pub fn db(&self) -> &SqlitePool {
         &self.pool
     }
 
-    pub async fn seed_initial_data(&self) {
+    /// Seed the test database with initial data
+    ///
+    /// # Errors
+    /// Will return an error if the seed data can't be inserted
+    pub async fn seed_initial_data(&self) -> Result<(), Error> {
         let db = self.db();
 
         // insert account
@@ -87,7 +96,8 @@ impl DatabasePool {
             account.sort_code,
         )
         .execute(db)
-        .await
-        .expect("Failed to create test account");
+        .await?;
+
+        Ok(())
     }
 }

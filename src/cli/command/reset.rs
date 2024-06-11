@@ -7,14 +7,18 @@ use dialoguer::Confirm;
 use std::env;
 use std::path::Path;
 
-use crate::{configuration::get_configuration, error::AppError as Error, model::DatabasePool};
+use crate::{configuration::get_config, error::AppErrors as Error, model::DatabasePool};
 
+/// Reset the database to its initial state.
+///
+/// # Errors
+/// Will return errors if the database file cannot be deleted or if the database pool cannot be created.
 pub async fn reset() -> Result<DatabasePool, Error> {
-    if !confirm_reset() {
+    if !confirm_reset()? {
         return Err(Error::AbortError);
     }
 
-    let config = get_configuration().expect("Failed to read configuration.");
+    let config = get_config()?;
 
     let current_dir = env::current_dir()?;
     let file_path = current_dir.join(&config.database.database_path);
@@ -28,7 +32,7 @@ pub async fn reset() -> Result<DatabasePool, Error> {
         .map_err(|e| Error::DbError(e.to_string()))
 }
 
-fn confirm_reset() -> bool {
+fn confirm_reset() -> Result<bool, Error> {
     println!("Resetting the database");
     println!(
         "{} {}",
@@ -37,8 +41,7 @@ fn confirm_reset() -> bool {
     );
     let confirmation = Confirm::new()
         .with_prompt("Do you want to continue?")
-        .interact()
-        .unwrap();
+        .interact()?;
 
-    confirmation
+    Ok(confirmation)
 }

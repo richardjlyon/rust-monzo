@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod test {
-    use crate::client::MonzoClient;
+    use crate::client::Monzo;
     use crate::model::DatabasePool;
     use crate::telemetry::{get_subscriber, init_subscriber};
     use once_cell::sync::Lazy;
@@ -16,10 +16,10 @@ pub mod test {
         // it, but this is the most straight-forward way of moving forward.
         if std::env::var("TEST_LOG").is_ok() {
             let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
-            init_subscriber(subscriber);
+            let _ = init_subscriber(subscriber);
         } else {
             let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::sink);
-            init_subscriber(subscriber);
+            let _ = init_subscriber(subscriber);
         };
     });
 
@@ -35,13 +35,13 @@ pub mod test {
             .await
             .unwrap();
 
-        pool.seed_initial_data().await;
+        let _ = pool.seed_initial_data().await;
 
         (pool, dir)
     }
 
-    pub fn get_client() -> MonzoClient {
-        match MonzoClient::new() {
+    pub fn get_client() -> Monzo {
+        match Monzo::new() {
             Ok(client) => client,
             Err(_) => panic!("Error creating client"),
         }

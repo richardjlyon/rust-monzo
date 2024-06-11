@@ -2,12 +2,15 @@
 //!
 //! This module gets pot information from the Monzo API.
 
-use super::MonzoClient;
-use crate::error::AppError as Error;
+use super::Monzo;
+use crate::error::AppErrors as Error;
 use crate::model::pots::{Pot, Pots};
 
-impl MonzoClient {
+impl Monzo {
     /// Get all pots that are not deleted for a given account
+    ///
+    /// # Errors
+    /// Will return errors if authentication fails or the Monzo API cannot be reached.
     pub async fn pots(&self, account_id: &str) -> Result<Vec<Pot>, Error> {
         let url = format!("{}pots?current_account_id={}", self.base_url, account_id);
         let response = self.client.get(&url).send().await?;

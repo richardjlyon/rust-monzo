@@ -2,8 +2,8 @@
 //!
 //! This module gets whoami information from the Monzo API.
 
-use super::MonzoClient;
-use crate::error::AppError as Error;
+use super::Monzo;
+use crate::error::AppErrors as Error;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -13,7 +13,11 @@ pub struct WhoAmI {
     pub user_id: String,
 }
 
-impl MonzoClient {
+impl Monzo {
+    /// Get whoami
+    ///
+    /// # Errors
+    /// Will return errors if authentication fails or the endpoint can't be reached.
     pub async fn whoami(&self) -> Result<WhoAmI, Error> {
         let url = format!("{}ping/whoami", self.base_url);
         let response = self.client.get(&url).send().await?;

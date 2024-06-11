@@ -5,7 +5,17 @@ use crate::client::ErrorJson;
 // use crate::client::MonzoClientError;
 
 #[derive(Debug, Error)]
-pub enum AppError {
+pub enum AppErrors {
+    // -- General error
+    #[error("Error: {0}")]
+    Error(String),
+
+    #[error("Can't set tracing Global Defafault")]
+    SetGlobalDefaultError(#[from] tracing::subscriber::SetGlobalDefaultError),
+
+    #[error("Can't set the logger")]
+    SetLoggerError(#[from] tracing_log::log::SetLoggerError),
+
     // -- Authorisation
     #[error("Access token error")]
     AccessTokenError(String),
@@ -25,6 +35,9 @@ pub enum AppError {
 
     #[error("Server error")]
     ServerError,
+
+    #[error("Invalid header value {0}")]
+    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
 
     // -- File error
     #[error("Failed to open file")]
@@ -46,7 +59,16 @@ pub enum AppError {
     #[error("Database error")]
     DbError(String),
 
+    #[error("Migration error")]
+    MigrationError(#[from] sqlx::migrate::MigrateError),
+
     // -- Command error
     #[error("Command aborted")]
     AbortError,
+
+    #[error("Currency not found: {0}")]
+    CurrencyNotFound(String),
+
+    #[error("Input error")]
+    InputError(#[from] dialoguer::Error),
 }
