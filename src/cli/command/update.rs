@@ -68,7 +68,7 @@ async fn get_sorted_transactions(
             info!("Fetched {} transactions", &transactions.len());
 
             for tx in transactions {
-                if tx.amount == 0 {
+                if tx.amount == 0 || tx.settled.is_none() {
                     continue;
                 }
 
@@ -92,7 +92,7 @@ fn print_transactions(
 ) -> Result<(), Error> {
     println!("{:>85}", "TRANSACTIONS");
     println!(
-        "-------------------------------------------------------------------------------------"
+        "---------------------------------------------------------------------------------------------------------------------"
     );
 
     for tx in transactions {
@@ -134,9 +134,20 @@ fn print_transactions(
             None => String::new(),
         };
 
+        let description = match tx.notes.len() {
+            0 => tx.description.clone(),
+            _ => tx.notes.clone(),
+        };
+
         println!(
-            "{:<11} {:<8} {:>12} {:>12} {:>12} {:>25}",
-            date_fmt, &account_name, credit_fmt, debit_fmt, local_amount_fmt, merchant_fmt
+            "{:<11} {:<8} {:>12} {:>12} {:>12} {:>30}  {:<30} ",
+            date_fmt,
+            &account_name,
+            credit_fmt,
+            debit_fmt,
+            local_amount_fmt,
+            merchant_fmt,
+            description
         );
     }
 
