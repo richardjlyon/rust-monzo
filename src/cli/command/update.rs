@@ -137,6 +137,8 @@ fn print_transactions(
 
         let account_name_fmt = format_account_name(&account_names, &tx.account_id);
 
+        let pot_fmt = format_pot(&pot_names, &tx.description);
+
         let amount = amount_with_currency(tx.amount, &tx.currency)?;
         let credit_fmt = format_credit(tx.amount, &amount);
         let debit_fmt = format_debit(tx.amount, &amount);
@@ -148,9 +150,10 @@ fn print_transactions(
         let description_fmt = format_description(&tx.notes, &tx.description, &pot_names);
 
         println!(
-            "{:<11} {:<8} {:>12} {:>12} {:>12} {:>30}  {:<30} ",
+            "{:<11} {:<8} {:<25} {:>12} {:>12} {:>12} {:>30}  {:<30} ",
             date_fmt,
             account_name_fmt,
+            pot_fmt,
             credit_fmt,
             debit_fmt,
             local_amount_fmt,
@@ -253,6 +256,15 @@ fn format_account_name(account_names: &HashMap<String, String>, account_id: &str
         Some(description) => description.clone(),
         None => account_id.to_string(),
     }
+}
+
+fn format_pot(pot_names: &HashMap<String, String>, description: &str) -> String {
+    let pot_fmt = match pot_names.get(description) {
+        Some(description) => description.clone(),
+        None => String::new(),
+    };
+
+    pot_fmt
 }
 
 fn format_credit(amount: i64, amount_str: &str) -> String {
