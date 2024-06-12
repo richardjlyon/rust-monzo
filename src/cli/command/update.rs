@@ -16,6 +16,7 @@ use crate::{
     error::AppErrors as Error,
     model::{
         account::{Account, Service as AccountService, SqliteAccountService},
+        pots::{Pot, Service, SqlitePotService},
         transaction::{Service as TransactionService, SqliteTransactionService, Transaction},
         DatabasePool,
     },
@@ -33,33 +34,66 @@ pub async fn update(
     since: &DateTime<Utc>,
     before: &DateTime<Utc>,
 ) -> Result<(), Error> {
-    let (transactions, accounts, account_descriptions) =
-        get_sorted_transactions(since, before).await?;
+    let (accounts, account_descriptions) = get_accounts(connection_pool.clone()).await?;
+    persist_accounts(connection_pool.clone(), &accounts).await?;
 
+    let pots = get_pots(connection_pool.clone(), &accounts).await?;
+    persist_pots(connection_pool.clone(), &pots).await?;
+
+    let transactions = get_sorted_transactions(&accounts, &since, before).await?;
     info!("->> Fetched {} transactions", transactions.len());
+    persist_transactions(connection_pool.clone(), &transactions).await?;
 
     print_transactions(&transactions, &account_descriptions)?;
-    persist_transactions(connection_pool, accounts, transactions).await?;
 
     Ok(())
+}
+
+// Get all accounts
+#[tracing::instrument(name = "get accounts")]
+async fn get_accounts(
+    connection_pool: DatabasePool,
+) -> Result<(Vec<Account>, HashMap<String, String>), Error> {
+    let monzo = Monzo::new()?;
+    let accounts = monzo.accounts().await?;
+    let account_descriptions = monzo.account_description_from_id().await?;
+
+    Ok((accounts, account_descriptions))
+}
+
+// Get all pots
+#[tracing::instrument(name = "get pots")]
+async fn get_pots(
+    connection_pool: DatabasePool,
+    accounts: &Vec<Account>,
+) -> Result<Vec<Pot>, Error> {
+    let monzo = Monzo::new()?;
+    let mut pots: Vec<Pot> = Vec::new();
+
+    for account in accounts {
+        let account_pots = monzo.pots(&account.id).await?;
+        pots.extend(account_pots);
+    }
+
+    Ok(pots)
 }
 
 // Get all transactions sorted by date
 #[tracing::instrument(name = "get sorted transactions")]
 async fn get_sorted_transactions(
+    accounts: &Vec<Account>,
     since: &DateTime<Utc>,
     before: &DateTime<Utc>,
-) -> Result<(Vec<Transaction>, Vec<Account>, HashMap<String, String>), Error> {
+) -> Result<Vec<Transaction>, Error> {
     let monzo = Monzo::new()?;
-    let accounts = monzo.accounts().await?;
-    let account_descriptions = monzo.account_description_from_id().await?;
+
     let mut txs: Vec<Transaction> = Vec::new();
 
     let monthly_intervals = IntervalGenerator::new()
         .with_grouping(Grouping::PerMonth)
         .get_intervals(*since, *before);
 
-    for account in &accounts {
+    for account in accounts {
         for (since, before) in monthly_intervals.clone() {
             let transactions = monzo
                 .transactions(&account.id, &since, &before, None)
@@ -82,7 +116,7 @@ async fn get_sorted_transactions(
 
     info!("END");
 
-    Ok((txs, accounts, account_descriptions))
+    Ok(txs)
 }
 
 /// Print the transactions to the console
@@ -154,15 +188,12 @@ fn print_transactions(
     Ok(())
 }
 
-// Persist the transactions to the database
-async fn persist_transactions(
+// Persist the accounts to the database
+async fn persist_accounts(
     connection_pool: DatabasePool,
-    accounts: Vec<Account>,
-    transactions: Vec<Transaction>,
+    accounts: &Vec<Account>,
 ) -> Result<(), Error> {
     let account_service = SqliteAccountService::new(connection_pool.clone());
-    let tx_service = SqliteTransactionService::new(connection_pool.clone());
-
     for account in accounts {
         match account_service.save_account(&account).await {
             Ok(()) => info!("Added account: {}", account.id),
@@ -174,10 +205,41 @@ async fn persist_transactions(
         }
     }
 
+    Ok(())
+}
+
+// Persist the pots to the database
+async fn persist_pots(connection_pool: DatabasePool, pots: &Vec<Pot>) -> Result<(), Error> {
+    let pot_service = SqlitePotService::new(connection_pool.clone());
+    for pot in pots {
+        match pot_service.save_pot(&pot).await {
+            Ok(()) => info!("Added pot: {}", pot.id),
+            Err(Error::Duplicate(_)) => (),
+            Err(e) => {
+                error!("Adding pot: {}", pot.id);
+                return Err(e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// Persist the transactions to the database
+async fn persist_transactions(
+    connection_pool: DatabasePool,
+    transactions: &Vec<Transaction>,
+) -> Result<(), Error> {
+    let tx_service = SqliteTransactionService::new(connection_pool.clone());
+
     for tx in transactions {
         match tx_service.save_transaction(&tx).await {
-            Err(Error::Duplicate(_)) | Ok(()) => (),
-            Err(e) => return Err(e),
+            Ok(()) => info!("Added transaction: {}", tx.id),
+            Err(Error::Duplicate(_)) => (),
+            Err(e) => {
+                error!("Adding transaction: {}", tx.id);
+                return Err(e);
+            }
         }
     }
 

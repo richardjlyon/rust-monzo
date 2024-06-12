@@ -37,3 +37,4 @@ cargo sqlx prepare
   - See: https://github.com/beancount/fava
 - Refresh token handling
 - Error handling. See: https://docs.monzo.com/?shell#errors
+- implement Axiom telemetry: https://axiom.co/docs
