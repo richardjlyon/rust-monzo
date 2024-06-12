@@ -153,7 +153,7 @@ async fn persist_transactions(
     let tx_service = SqliteTransactionService::new(connection_pool.clone());
 
     for account in accounts {
-        match account_service.create_account(&account).await {
+        match account_service.save_account(&account).await {
             Ok(()) => info!("Added account: {}", account.id),
             Err(Error::Duplicate(_)) => (),
             Err(e) => {
@@ -164,7 +164,7 @@ async fn persist_transactions(
     }
 
     for tx in transactions {
-        match tx_service.create_transaction(&tx).await {
+        match tx_service.save_transaction(&tx).await {
             Err(Error::Duplicate(_)) | Ok(()) => (),
             Err(e) => return Err(e),
         }

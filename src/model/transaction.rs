@@ -56,7 +56,7 @@ pub struct Attachment {
 
 #[async_trait]
 pub trait Service {
-    async fn create_transaction(&self, tx_fc: &Transaction) -> Result<(), Error>;
+    async fn save_transaction(&self, tx_fc: &Transaction) -> Result<(), Error>;
     async fn delete_all_transactions(&self) -> Result<(), Error>;
 }
 
@@ -81,7 +81,7 @@ impl Service for SqliteTransactionService {
         skip(self, tx_fc),
         fields(tx_id = %tx_fc.id, acc_id = %tx_fc.account_id)
     )]
-    async fn create_transaction(&self, tx_fc: &Transaction) -> Result<(), Error> {
+    async fn save_transaction(&self, tx_fc: &Transaction) -> Result<(), Error> {
         let db = self.pool.db();
 
         if is_duplicate_transaction(db, &tx_fc.id).await? {
@@ -225,7 +225,7 @@ async fn merchant_exists(db: &DatabasePool, merchant_id: &str) -> Result<bool, E
 // insert a merchant
 async fn insert_merchant(db: &DatabasePool, merchant: &Merchant) -> Result<(), Error> {
     let merchant_service = SqliteMerchantService::new(db.clone());
-    merchant_service.create_merchant(merchant).await
+    merchant_service.save_merchant(merchant).await
 }
 
 // -- Tests ----------------------------------------------------------------------------
@@ -244,7 +244,7 @@ mod tests {
         tx.account_id = "1".to_string();
 
         // Act
-        let result = service.create_transaction(&tx).await;
+        let result = service.save_transaction(&tx).await;
 
         //Assert
         assert!(result.is_ok());

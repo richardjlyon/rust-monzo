@@ -35,7 +35,7 @@ pub struct Address {
 
 #[async_trait]
 pub trait Service {
-    async fn create_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error>;
+    async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error>;
     async fn get_merchant(&self, merchant_id: &str) -> Result<Option<Merchant>, Error>;
     async fn delete_all_merchants(&self) -> Result<(), Error>;
 }
@@ -61,7 +61,7 @@ impl Service for SqliteMerchantService {
         skip(self, merchant_fc),
         fields(tx_id = %merchant_fc.id, merchant_id = %merchant_fc.id)
     )]
-    async fn create_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error> {
+    async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error> {
         let db = self.pool.db();
 
         if is_duplicate_merchant(db, &merchant_fc.id).await? {
@@ -165,7 +165,7 @@ mod tests {
         let merchant = Merchant::default();
 
         // Act
-        let result = service.create_merchant(&merchant).await;
+        let result = service.save_merchant(&merchant).await;
 
         // Assert
         assert!(result.is_ok());
@@ -179,7 +179,7 @@ mod tests {
         let merchant = Merchant::default();
 
         // Act
-        service.create_merchant(&merchant).await.unwrap();
+        service.save_merchant(&merchant).await.unwrap();
         let result = service.get_merchant(&merchant.id).await;
 
         // Assert
@@ -195,7 +195,7 @@ mod tests {
         let merchant = Merchant::default();
 
         //Act
-        service.create_merchant(&merchant).await.unwrap();
+        service.save_merchant(&merchant).await.unwrap();
         let result = service.delete_all_merchants().await;
 
         // Assert

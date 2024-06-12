@@ -29,7 +29,7 @@ pub struct Account {
 
 #[async_trait]
 pub trait Service {
-    async fn create_account(&self, acc_fc: &Account) -> Result<(), Error>;
+    async fn save_account(&self, acc_fc: &Account) -> Result<(), Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +53,7 @@ impl Service for SqliteAccountService {
         skip(self, acc_fc),
         fields(id = %acc_fc.id)
     )]
-    async fn create_account(&self, acc_fc: &Account) -> Result<(), Error> {
+    async fn save_account(&self, acc_fc: &Account) -> Result<(), Error> {
         let db = self.pool.db();
 
         if is_duplicate_account(db, &acc_fc.id).await? {
@@ -129,7 +129,7 @@ mod tests {
         let acc = Account::default();
 
         // Act
-        let result = service.create_account(&acc).await;
+        let result = service.save_account(&acc).await;
 
         // Assert
         assert!(result.is_ok());
