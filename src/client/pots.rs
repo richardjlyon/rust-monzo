@@ -2,6 +2,8 @@
 //!
 //! This module gets pot information from the Monzo API.
 
+use std::collections::HashMap;
+
 use super::Monzo;
 use crate::error::AppErrors as Error;
 use crate::model::pots::{Pot, Pots};
@@ -17,6 +19,22 @@ impl Monzo {
         let pots: Pots = Self::handle_response(response).await?;
 
         Ok(pots.pots)
+    }
+
+    /// Generate a hash of pot IDs and descriptions
+    ///
+    /// # Errors
+    /// Will return errors if authentication fails or the Monzo API cannot be reached.
+    pub async fn pot_description_from_id(&self) -> Result<HashMap<String, String>, Error> {
+        let mut pots = HashMap::new();
+        let accounts = self.accounts().await?;
+        for account in accounts {
+            for pot in self.pots(&account.id).await? {
+                pots.insert(pot.id, pot.name);
+            }
+        }
+
+        Ok(pots)
     }
 }
 

@@ -16,6 +16,7 @@ use crate::{
     error::AppErrors as Error,
     model::{
         account::{Account, Service as AccountService, SqliteAccountService},
+        merchant::Merchant,
         pots::{Pot, Service, SqlitePotService},
         transaction::{Service as TransactionService, SqliteTransactionService, Transaction},
         DatabasePool,
@@ -34,17 +35,17 @@ pub async fn update(
     since: &DateTime<Utc>,
     before: &DateTime<Utc>,
 ) -> Result<(), Error> {
-    let (accounts, account_descriptions) = get_accounts(connection_pool.clone()).await?;
+    let (accounts, account_names) = get_accounts(connection_pool.clone()).await?;
     persist_accounts(connection_pool.clone(), &accounts).await?;
 
-    let pots = get_pots(connection_pool.clone(), &accounts).await?;
+    let (pots, pot_names) = get_pots(connection_pool.clone(), &accounts).await?;
     persist_pots(connection_pool.clone(), &pots).await?;
 
     let transactions = get_sorted_transactions(&accounts, &since, before).await?;
     info!("->> Fetched {} transactions", transactions.len());
     persist_transactions(connection_pool.clone(), &transactions).await?;
 
-    print_transactions(&transactions, &account_descriptions)?;
+    print_transactions(&transactions, &account_names, &pot_names)?;
 
     Ok(())
 }
@@ -56,9 +57,9 @@ async fn get_accounts(
 ) -> Result<(Vec<Account>, HashMap<String, String>), Error> {
     let monzo = Monzo::new()?;
     let accounts = monzo.accounts().await?;
-    let account_descriptions = monzo.account_description_from_id().await?;
+    let account_names = monzo.account_description_from_id().await?;
 
-    Ok((accounts, account_descriptions))
+    Ok((accounts, account_names))
 }
 
 // Get all pots
@@ -66,16 +67,17 @@ async fn get_accounts(
 async fn get_pots(
     connection_pool: DatabasePool,
     accounts: &Vec<Account>,
-) -> Result<Vec<Pot>, Error> {
+) -> Result<(Vec<Pot>, HashMap<String, String>), Error> {
     let monzo = Monzo::new()?;
     let mut pots: Vec<Pot> = Vec::new();
+    let pot_names = monzo.pot_description_from_id().await?;
 
     for account in accounts {
         let account_pots = monzo.pots(&account.id).await?;
         pots.extend(account_pots);
     }
 
-    Ok(pots)
+    Ok((pots, pot_names))
 }
 
 // Get all transactions sorted by date
@@ -122,7 +124,8 @@ async fn get_sorted_transactions(
 /// Print the transactions to the console
 fn print_transactions(
     transactions: &Vec<Transaction>,
-    account_description: &HashMap<String, String>,
+    account_names: &HashMap<String, String>,
+    pot_names: &HashMap<String, String>,
 ) -> Result<(), Error> {
     println!("{:>85}", "TRANSACTIONS");
     println!(
@@ -130,58 +133,29 @@ fn print_transactions(
     );
 
     for tx in transactions {
-        let account_name = match account_description.get(&tx.account_id) {
-            Some(n) => n,
-            None => "None",
-        };
+        let date_fmt = format_date(&tx.created);
 
-        let Some(iso_code) = iso::find(&tx.currency) else {
-            return Err(Error::CurrencyNotFound(tx.currency.clone()));
-        };
-        let Some(local_iso_code) = iso::find(&tx.local_currency) else {
-            return Err(Error::CurrencyNotFound(tx.local_currency.clone()));
-        };
+        let account_name_fmt = format_account_name(&account_names, &tx.account_id);
 
-        let date_fmt = tx.created.format("%Y-%m-%d").to_string();
-        let amount_fmt = Money::from_minor(tx.amount, iso_code).to_string();
+        let amount = amount_with_currency(tx.amount, &tx.currency)?;
+        let credit_fmt = format_credit(tx.amount, &amount);
+        let debit_fmt = format_debit(tx.amount, &amount);
+        let local_amount_fmt =
+            local_amount_with_currency(tx.local_amount, &tx.currency, &tx.local_currency)?;
 
-        let credit_fmt = if tx.amount >= 0 {
-            amount_fmt.clone()
-        } else {
-            String::new()
-        };
+        let merchant_fmt = format_merchant(&tx.merchant);
 
-        let debit_fmt = if tx.amount < 0 {
-            amount_fmt
-        } else {
-            String::new()
-        };
-
-        let local_amount_fmt = if iso_code == local_iso_code {
-            String::new()
-        } else {
-            format!("({})", Money::from_minor(tx.local_amount, local_iso_code))
-        };
-
-        let merchant_fmt = match &tx.merchant {
-            Some(merchant) => merchant.name.clone(),
-            None => String::new(),
-        };
-
-        let description = match tx.notes.len() {
-            0 => tx.description.clone(),
-            _ => tx.notes.clone(),
-        };
+        let description_fmt = format_description(&tx.notes, &tx.description, &pot_names);
 
         println!(
             "{:<11} {:<8} {:>12} {:>12} {:>12} {:>30}  {:<30} ",
             date_fmt,
-            &account_name,
+            account_name_fmt,
             credit_fmt,
             debit_fmt,
             local_amount_fmt,
             merchant_fmt,
-            description
+            description_fmt
         );
     }
 
@@ -244,4 +218,124 @@ async fn persist_transactions(
     }
 
     Ok(())
+}
+
+fn amount_with_currency(amount: i64, iso_code: &str) -> Result<String, Error> {
+    let Some(iso_code) = iso::find(iso_code) else {
+        return Err(Error::CurrencyNotFound(iso_code.to_string()));
+    };
+
+    Ok(Money::from_minor(amount, iso_code).to_string())
+}
+
+fn local_amount_with_currency(
+    amount: i64,
+    iso_code: &str,
+    local_iso_code: &str,
+) -> Result<String, Error> {
+    if iso_code == local_iso_code {
+        return Ok(String::new());
+    }
+
+    let Some(iso_code) = iso::find(local_iso_code) else {
+        return Err(Error::CurrencyNotFound(iso_code.to_string()));
+    };
+
+    Ok(format!("({})", Money::from_minor(amount, iso_code)))
+}
+
+fn format_date(date: &DateTime<Utc>) -> String {
+    date.format("%Y-%m-%d").to_string()
+}
+
+fn format_account_name(account_names: &HashMap<String, String>, account_id: &str) -> String {
+    match account_names.get(account_id) {
+        Some(description) => description.clone(),
+        None => account_id.to_string(),
+    }
+}
+
+fn format_credit(amount: i64, amount_str: &str) -> String {
+    let credit_fmt = if amount >= 0 {
+        amount_str.to_string()
+    } else {
+        String::new()
+    };
+
+    credit_fmt
+}
+
+fn format_debit(amount: i64, amount_str: &str) -> String {
+    let debit_fmt = if amount < 0 {
+        amount_str.to_string()
+    } else {
+        String::new()
+    };
+
+    debit_fmt
+}
+
+fn format_merchant(merchant: &Option<Merchant>) -> String {
+    let merchant_fmt = match merchant {
+        Some(merchant) => merchant.name.clone(),
+        None => String::new(),
+    };
+
+    merchant_fmt
+}
+
+fn format_description(
+    notes: &str,
+    description: &str,
+    pot_names: &HashMap<String, String>,
+) -> String {
+    // substitute the description with the pot name if it exists
+    let description_with_pot_name = match pot_names.get(description) {
+        Some(pot_name) => format!("Pot:{}", pot_name.clone()),
+        None => description.to_string(),
+    };
+
+    let description_fmt = match notes.len() {
+        0 => description_with_pot_name,
+        _ => notes.to_string(),
+    };
+
+    description_fmt.to_string()
+}
+
+// -- Tests ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_amount() {
+        let mut res = amount_with_currency(10000, "GBP").unwrap();
+        assert_eq!(res, "£100.00");
+
+        res = amount_with_currency(10000, "USD").unwrap();
+        assert_eq!(res, "$100.00");
+    }
+
+    #[test]
+    fn test_amount_error() {
+        let res = amount_with_currency(10000, "XXX");
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_local_amount() {
+        let res = local_amount_with_currency(10000, "GBP", "GBP").unwrap();
+        assert_eq!(res, "");
+
+        let res = local_amount_with_currency(10000, "GBP", "USD").unwrap();
+        assert_eq!(res, "($100.00)");
+    }
+
+    #[test]
+    fn test_local_amount_error() {
+        let res = local_amount_with_currency(10000, "USD", "XXX");
+        assert!(res.is_err());
+    }
 }
