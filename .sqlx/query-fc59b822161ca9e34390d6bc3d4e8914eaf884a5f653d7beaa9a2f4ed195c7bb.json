@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO merchants (\n                    id,\n                    name,\n                    category\n                )\n                VALUES ($1, $2, $3)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "fc59b822161ca9e34390d6bc3d4e8914eaf884a5f653d7beaa9a2f4ed195c7bb"
+}

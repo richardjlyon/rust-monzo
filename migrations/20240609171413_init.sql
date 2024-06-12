@@ -15,7 +15,8 @@ CREATE TABLE pots (
     name TEXT NOT NULL,
     balance INTEGER NOT NULL,
     currency TEXT NOT NULL,
-    deleted BOOLEAN NOT NULL
+    deleted BOOLEAN NOT NULL,
+    pot_type TEXT NOT NULL
 );
 
 CREATE TABLE transactions (

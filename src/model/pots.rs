@@ -21,6 +21,8 @@ pub struct Pot {
     pub balance: i64,
     pub currency: String,
     pub deleted: bool,
+    #[serde(rename = "type")]
+    pub pot_type: String,
 }
 
 // -- Services -------------------------------------------------------------------------
@@ -67,15 +69,17 @@ impl Service for SqlitePotService {
                     name,
                     balance,
                     currency,
-                    deleted
+                    deleted,
+                    pot_type
                 )
-                VALUES ($1, $2, $3, $4, $5)
+                VALUES ($1, $2, $3, $4, $5, $6)
             ",
             pot_fc.id,
             pot_fc.name,
             pot_fc.balance,
             pot_fc.currency,
             pot_fc.deleted,
+            pot_fc.pot_type,
         )
         .execute(db)
         .await
