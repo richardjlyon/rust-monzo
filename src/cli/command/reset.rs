@@ -1,6 +1,6 @@
 //! Reset the database to its initial state.
 //!
-//! This command will delete all data from the database.
+//! This command will delete the database and recreate it.
 //!
 use colored::Colorize;
 use dialoguer::Confirm;

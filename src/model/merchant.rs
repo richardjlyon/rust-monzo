@@ -37,7 +37,6 @@ pub struct Address {
 pub trait Service {
     async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error>;
     async fn get_merchant(&self, merchant_id: &str) -> Result<Option<Merchant>, Error>;
-    async fn delete_all_merchants(&self) -> Result<(), Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -114,22 +113,6 @@ impl Service for SqliteMerchantService {
 
         Ok(merchant)
     }
-
-    #[tracing::instrument(name = "Delete all merchants")]
-    async fn delete_all_merchants(&self) -> Result<(), Error> {
-        let db = self.pool.db();
-
-        match sqlx::query!("DELETE FROM merchants").execute(db).await {
-            Ok(_) => {
-                info!("Deleted all merchants");
-                Ok(())
-            }
-            Err(e) => {
-                error!("Failed to delete all merchants: {}", e.to_string());
-                Err(Error::DbError(e.to_string()))
-            }
-        }
-    }
 }
 
 // -- Utility functions ----------------------------------------------------------------
@@ -185,20 +168,5 @@ mod tests {
         // Assert
         assert!(result.is_ok());
         assert_eq!(result.unwrap().unwrap().id, merchant.id);
-    }
-
-    #[tokio::test]
-    async fn test_delete_all_merchants() {
-        // Arrange
-        let (pool, _tmp) = test_db().await;
-        let service = SqliteMerchantService::new(pool);
-        let merchant = Merchant::default();
-
-        //Act
-        service.save_merchant(&merchant).await.unwrap();
-        let result = service.delete_all_merchants().await;
-
-        // Assert
-        assert!(result.is_ok());
     }
 }
