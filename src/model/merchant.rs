@@ -102,7 +102,7 @@ impl Service for SqliteMerchantService {
         let merchant = sqlx::query_as!(
             Merchant,
             r"
-                SELECT id, name, category
+                SELECT *
                 FROM merchants
                 WHERE id = $1
             ",
@@ -141,7 +141,7 @@ mod tests {
     use crate::tests::test::test_db;
 
     #[tokio::test]
-    async fn test_create_merchant() {
+    async fn create_merchant() {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteMerchantService::new(pool);
@@ -155,7 +155,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_merchant() {
+    async fn get_merchant() {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteMerchantService::new(pool);
