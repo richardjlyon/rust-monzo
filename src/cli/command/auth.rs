@@ -4,6 +4,7 @@
 //! for an authorisation token, and persist it to the configuration file.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::option::Option;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -30,8 +31,9 @@ pub async fn auth() -> Result<(), Error> {
 
     let mut config = get_config()?;
     config.access_tokens = access_tokens;
-    let file = std::fs::File::create("configuration.yaml")?;
-    serde_yaml::to_writer(file, &config)?;
+    let mut file = std::fs::File::create("configuration.toml")?;
+    let toml_string = toml::to_string_pretty(&config)?;
+    file.write_all(toml_string.as_bytes())?;
 
     Ok(())
 }
