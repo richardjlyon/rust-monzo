@@ -1,6 +1,8 @@
 /target
+/accounts
+
 .env
-configuration.yaml
+configuration.toml
 
 .DS_Store
 

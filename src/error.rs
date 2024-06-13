@@ -43,8 +43,8 @@ pub enum AppErrors {
     #[error("Failed to open file")]
     FileError(#[from] std::io::Error),
 
-    #[error("Failed to deserialise yaml")]
-    YamlError(#[from] serde_yaml::Error),
+    #[error("Failed to deserialise toml")]
+    TomlError(#[from] toml::ser::Error),
 
     #[error("Configuration error")]
     ConfigurationError(#[from] config::ConfigError),

@@ -44,10 +44,9 @@ pub struct AccessTokens {
 pub fn get_config() -> Result<Settings, Error> {
     // Initialise our configuration reader
     let settings = config::Config::builder()
-        // Add configuration values from a file named `configuration.yaml`.
         .add_source(config::File::new(
-            "configuration.yaml",
-            config::FileFormat::Yaml,
+            "configuration.toml",
+            config::FileFormat::Toml,
         ))
         .build()?;
     Ok(settings.try_deserialize::<Settings>()?)
