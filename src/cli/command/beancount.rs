@@ -15,8 +15,7 @@ use crate::{
 
 pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     // let _db = pool.db();
-    let bc = Beancount::new()?;
-    bc.init_from_config()?;
+    let bc = Beancount::from_config()?;
     let acc_service = SqliteAccountService::new(pool.clone());
     let pot_service = SqlitePotService::new(pool.clone());
     let _tx_service = SqliteTransactionService::new(pool.clone());
