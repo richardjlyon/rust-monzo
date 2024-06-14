@@ -16,7 +16,7 @@ async fn main() -> Result<(), Error> {
 
     let configuration = get_config().expect("Failed to read configuration.");
 
-    let connection_pool = DatabasePool::new_from_config(configuration.clone()).await?;
+    let pool = DatabasePool::new_from_config(configuration.clone()).await?;
 
     let cli = Cli::parse();
 
