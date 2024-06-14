@@ -3,6 +3,7 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
 };
+use transaction::Transaction;
 
 use crate::configuration::Settings;
 use crate::error::AppErrors as Error;
@@ -97,6 +98,36 @@ impl DatabasePool {
         )
         .execute(db)
         .await?;
+
+        // insert transactions
+
+        let mut tx1 = Transaction::default();
+        tx1.id = "1".to_string();
+        tx1.account_id = account.id.clone();
+
+        let mut tx2 = Transaction::default();
+        tx2.id = "2".to_string();
+        tx2.account_id = account.id.clone();
+
+        for tx in vec![tx1, tx2] {
+            sqlx::query!(
+                r#"
+                INSERT INTO transactions (id, account_id, amount, local_amount, currency, local_currency, description, created, category)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                "#,
+                tx.id,
+                tx.account_id,
+                tx.amount,
+                tx.local_amount,
+                tx.currency,
+                tx.local_currency,
+                tx.description,
+                tx.created,
+                tx.category,
+            )
+            .execute(db)
+            .await?;
+        }
 
         Ok(())
     }

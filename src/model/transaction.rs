@@ -53,7 +53,7 @@ pub struct Attachment {
 }
 
 /// Represents a transaction from the database
-#[derive(Debug, Default)]
+#[derive(Debug, Default, sqlx::FromRow)]
 pub struct Transaction {
     pub id: String,
     pub account_id: String,
@@ -189,38 +189,101 @@ impl Service for SqliteTransactionService {
 
     #[tracing::instrument(name = "Read transactions", skip(self))]
     async fn read_transactions(&self) -> Result<Vec<Transaction>, Error> {
-        todo!("Implement read_transactions")
+        let db = self.pool.db();
+
+        // TODO: Figure out why query_as!(Transaction) won't deserialise DateTime<Utc>
+        let rows = sqlx::query!(
+            r"
+                SELECT * FROM transactions
+            "
+        )
+        .fetch_all(db)
+        .await;
+
+        match rows {
+            Ok(txs) => {
+                info!("Read transactions: {}", txs.len());
+                Ok(txs
+                    .into_iter()
+                    .map(|row| Transaction {
+                        id: row.id,
+                        account_id: row.account_id,
+                        merchant_id: row.merchant_id,
+                        amount: row.amount,
+                        currency: row.currency,
+                        local_amount: row.local_amount,
+                        local_currency: row.local_currency,
+                        created: DateTime::parse_from_rfc3339(&row.created)
+                            .unwrap()
+                            .with_timezone(&Utc),
+                        description: row.description,
+                        notes: row.notes,
+                        settled: row.settled.map(|s| {
+                            DateTime::parse_from_rfc3339(&s)
+                                .unwrap()
+                                .with_timezone(&Utc)
+                        }),
+                        updated: row.updated.map(|u| {
+                            DateTime::parse_from_rfc3339(&u)
+                                .unwrap()
+                                .with_timezone(&Utc)
+                        }),
+                        category: row.category,
+                    })
+                    .collect())
+            }
+            Err(e) => {
+                error!("Failed to read transactions. Reason: {}", e.to_string());
+                return Err(Error::DbError(e.to_string()));
+            }
+        }
     }
 
     #[tracing::instrument(name = "Read transaction", skip(self))]
     async fn read_transaction(&self, tx_id: &str) -> Result<Transaction, Error> {
-        let _db = self.pool.db();
+        let db = self.pool.db();
 
-        todo!("Implement read_transaction")
+        // TODO: Figure out why query_as!(Transaction) won't deserialise DateTime<Utc>
+        let row = sqlx::query!(
+            r"
+                SELECT * FROM transactions WHERE id = $1
+            ",
+            tx_id
+        )
+        .fetch_one(db)
+        .await;
 
-        // match sqlx::query_as!(
-        //     Transaction,
-        //     r"
-        //         SELECT * FROM transactions WHERE id = $1
-        //     ",
-        //     tx_id
-        // )
-        // .fetch_one(db)
-        // .await
-        // {
-        //     Ok(tx) => {
-        //         info!("Read transaction: {}", tx_id);
-        //         Ok(tx)
-        //     }
-        //     Err(e) => {
-        //         error!(
-        //             "Failed to read transaction: {}. Reason: {}",
-        //             tx_id,
-        //             e.to_string()
-        //         );
-        //         Err(Error::DbError(e.to_string()))
-        //     }
-        // }
+        match row {
+            Ok(tx) => Ok(Transaction {
+                id: tx.id,
+                account_id: tx.account_id,
+                merchant_id: tx.merchant_id,
+                amount: tx.amount,
+                currency: tx.currency,
+                local_amount: tx.local_amount,
+                local_currency: tx.local_currency,
+                created: DateTime::parse_from_rfc3339(&tx.created)
+                    .unwrap()
+                    .with_timezone(&Utc),
+                description: tx.description,
+                notes: tx.notes,
+                settled: tx.settled.map(|s| {
+                    DateTime::parse_from_rfc3339(&s)
+                        .unwrap()
+                        .with_timezone(&Utc)
+                }),
+                updated: tx.updated.map(|u| {
+                    DateTime::parse_from_rfc3339(&u)
+                        .unwrap()
+                        .with_timezone(&Utc)
+                }),
+                category: tx.category,
+            }),
+            Err(e) => {
+                error!("Failed to read transaction. Reason: {}", e.to_string());
+                return Err(Error::DbError(e.to_string()));
+            }
+        }
     }
 
     #[tracing::instrument(name = "Delete all transactions", skip(self))]
@@ -319,10 +382,31 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
-    async fn read_transactions() {}
+    async fn read_transactions() {
+        // Arrange
+        let (pool, _tmp) = test_db().await;
+        // println!("->> {:?}", _tmp);
+        // _tmp.leak();
+        let service = SqliteTransactionService::new(pool);
+
+        // Act
+        let txs = service.read_transactions().await.unwrap();
+
+        //Assert
+        assert!(txs.len() == 2);
+    }
 
     #[tokio::test]
-    #[ignore]
-    async fn read_transaction() {}
+    async fn read_transaction() {
+        // Arrange
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteTransactionService::new(pool);
+        let tx_id = "1";
+
+        // Act
+        let tx = service.read_transaction(&tx_id).await.unwrap();
+
+        //Assert
+        assert_eq!(tx.id, "1".to_string());
+    }
 }

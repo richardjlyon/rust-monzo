@@ -51,7 +51,7 @@ mod test {
     #[tokio::test]
     async fn transactions_work() {
         let monzo = get_client();
-        let (pool, _tmp) = tests::test::test_db().await;
+        let pool = tests::test::test_db().await;
 
         let mut txs: Vec<TransactionResponse> = Vec::new();
         let account_id = "acc_0000AdNaq81vwtbTBedL06";

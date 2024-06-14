@@ -30,12 +30,16 @@ pub mod test {
         Lazy::force(&TRACING);
 
         let dir = temp_dir::TempDir::with_prefix("monzo-test").unwrap();
+        let db_path = dir.path().join("dev.db?mode=rwc");
 
-        let pool = DatabasePool::new(dir.path().join("dev.db?mode=rwc").to_str().unwrap(), 1)
+        let pool = DatabasePool::new(db_path.to_str().unwrap(), 1)
             .await
             .unwrap();
 
-        let _ = pool.seed_initial_data().await;
+        let _ = pool
+            .seed_initial_data()
+            .await
+            .expect("Failed to seed initial data");
 
         (pool, dir)
     }
