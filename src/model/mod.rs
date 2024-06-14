@@ -1,4 +1,5 @@
 use account::Account;
+use pot::Pot;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
@@ -134,6 +135,31 @@ impl DatabasePool {
             .execute(db)
             .await?;
         }
+
+        // insert pot
+        let pot = Pot {
+            id: "1".to_string(),
+            name: "pot_name".to_string(),
+            balance: 1234,
+            currency: "GBP".to_string(),
+            deleted: false,
+            pot_type: "default".to_string(),
+        };
+
+        sqlx::query!(
+            r#"
+            INSERT INTO pots (id, name, balance, currency, deleted, pot_type)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "#,
+            pot.id,
+            pot.name,
+            pot.balance,
+            pot.currency,
+            pot.deleted,
+            pot.pot_type,
+        )
+        .execute(db)
+        .await?;
 
         Ok(())
     }

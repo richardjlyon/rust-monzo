@@ -30,7 +30,8 @@ pub struct Pot {
 #[async_trait]
 pub trait Service {
     async fn save_pot(&self, pot_fc: &Pot) -> Result<(), Error>;
-    async fn get_pot(&self, pot_id: &str) -> Result<Option<Pot>, Error>;
+    async fn read_pots(&self) -> Result<Vec<Pot>, Error>;
+    async fn read_pot(&self, pot_id: &str) -> Result<Option<Pot>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -95,8 +96,31 @@ impl Service for SqlitePotService {
         }
     }
 
+    #[tracing::instrument(name = "Get pots")]
+    async fn read_pots(&self) -> Result<Vec<Pot>, Error> {
+        let db = self.pool.db();
+
+        let pots = sqlx::query_as!(
+            Pot,
+            r"
+                SELECT *
+                FROM pots
+            ",
+        )
+        .fetch_all(db)
+        .await;
+
+        match pots {
+            Ok(pots) => Ok(pots),
+            Err(e) => {
+                error!("Failed to get pots: {:?}", e);
+                Err(Error::DbError(e.to_string()))
+            }
+        }
+    }
+
     #[tracing::instrument(name = "Get pot")]
-    async fn get_pot(&self, pot_id: &str) -> Result<Option<Pot>, Error> {
+    async fn read_pot(&self, pot_id: &str) -> Result<Option<Pot>, Error> {
         let db = self.pool.db();
 
         let pot = sqlx::query_as!(
@@ -156,18 +180,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_pott() {
+    async fn read_pots() {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqlitePotService::new(pool);
-        let pot = Pot::default();
 
         // Act
-        service.save_pot(&pot).await.unwrap();
-        let result = service.get_pot(&pot.id).await;
+        let result = service.read_pots().await;
 
         // Assert
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().unwrap().id, pot.id);
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn read_pot() {
+        // Arrange
+        let (pool, _tmp) = test_db().await;
+        let service = SqlitePotService::new(pool);
+        let pot_id = "1".to_string();
+
+        // Act
+        let result = service.read_pot(&pot_id).await.unwrap().unwrap();
+
+        // Assert
+        assert_eq!(result.id, pot_id);
     }
 }
