@@ -1,9 +1,9 @@
 //! Models for the account endpoint
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::Deserialize;
-use sqlx::{Pool, Sqlite};
+use sqlx::{prelude::FromRow, Pool, Sqlite};
 use tracing_log::log::{error, info};
 
 use super::DatabasePool;
@@ -14,12 +14,14 @@ pub struct Accounts {
     pub accounts: Vec<Account>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, FromRow)]
 pub struct Account {
     pub id: String,
     pub closed: bool,
     pub created: DateTime<Utc>,
     pub description: String,
+    pub currency: String,
+    pub country_code: String,
     pub owner_type: String,
     pub account_number: String,
     pub sort_code: String,
@@ -30,6 +32,7 @@ pub struct Account {
 #[async_trait]
 pub trait Service {
     async fn save_account(&self, acc_fc: &Account) -> Result<(), Error>;
+    async fn read_accounts(&self) -> Result<Vec<Account>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -69,16 +72,20 @@ impl Service for SqliteAccountService {
                     closed,
                     created,
                     description,
+                    currency,
+                    country_code,
                     owner_type,
                     account_number,
                     sort_code
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ",
             acc_fc.id,
             acc_fc.closed,
             acc_fc.created,
             acc_fc.description,
+            acc_fc.currency,
+            acc_fc.country_code,
             acc_fc.owner_type,
             acc_fc.account_number,
             acc_fc.sort_code,
@@ -93,6 +100,44 @@ impl Service for SqliteAccountService {
             Err(e) => {
                 error!("Failed to create account: {}", acc_fc.id);
                 Err(Error::DbError(e.to_string()))
+            }
+        }
+    }
+
+    #[tracing::instrument(name = "Getting accounts", skip(self))]
+    async fn read_accounts(&self) -> Result<Vec<Account>, Error> {
+        let db = self.pool.db();
+
+        let rows = sqlx::query!(
+            r"
+                SELECT *
+                FROM accounts
+            "
+        )
+        .fetch_all(db)
+        .await;
+
+        match rows {
+            Ok(rows) => {
+                info!("Read {} accounts", rows.len());
+                Ok(rows
+                    .into_iter()
+                    .map(|row| Account {
+                        id: row.id,
+                        closed: row.closed,
+                        created: TimeZone::from_utc_datetime(&Utc, &row.created),
+                        description: row.description,
+                        currency: row.currency,
+                        country_code: row.country_code,
+                        owner_type: row.owner_type,
+                        account_number: row.account_number,
+                        sort_code: row.sort_code,
+                    })
+                    .collect())
+            }
+            Err(e) => {
+                error!("Failed to read transactions. Reason: {}", e.to_string());
+                return Err(Error::DbError(e.to_string()));
             }
         }
     }
@@ -122,7 +167,7 @@ mod tests {
     use crate::tests::test::test_db;
 
     #[tokio::test]
-    async fn create_accoun_workst() {
+    async fn create_account() {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteAccountService::new(pool);
@@ -133,5 +178,18 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn read_accounts() {
+        // Arrange
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteAccountService::new(pool);
+
+        // Act
+        let result = service.read_accounts().await.unwrap();
+
+        // Assert
+        assert_eq!(result.len(), 1);
     }
 }

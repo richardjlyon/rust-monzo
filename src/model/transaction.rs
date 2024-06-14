@@ -1,7 +1,7 @@
 //! Models for the transaction endpoint
 #![allow(dead_code)]
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Deserializer};
 use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
@@ -194,16 +194,17 @@ impl Service for SqliteTransactionService {
         // TODO: Figure out why query_as!(Transaction) won't deserialise DateTime<Utc>
         let rows = sqlx::query!(
             r"
-                SELECT * FROM transactions
+                SELECT *
+                FROM transactions
             "
         )
         .fetch_all(db)
         .await;
 
         match rows {
-            Ok(txs) => {
-                info!("Read transactions: {}", txs.len());
-                Ok(txs
+            Ok(rows) => {
+                info!("Read {} transactions", rows.len());
+                Ok(rows
                     .into_iter()
                     .map(|row| Transaction {
                         id: row.id,
@@ -213,21 +214,11 @@ impl Service for SqliteTransactionService {
                         currency: row.currency,
                         local_amount: row.local_amount,
                         local_currency: row.local_currency,
-                        created: DateTime::parse_from_rfc3339(&row.created)
-                            .unwrap()
-                            .with_timezone(&Utc),
+                        created: TimeZone::from_utc_datetime(&Utc, &row.created),
                         description: row.description,
                         notes: row.notes,
-                        settled: row.settled.map(|s| {
-                            DateTime::parse_from_rfc3339(&s)
-                                .unwrap()
-                                .with_timezone(&Utc)
-                        }),
-                        updated: row.updated.map(|u| {
-                            DateTime::parse_from_rfc3339(&u)
-                                .unwrap()
-                                .with_timezone(&Utc)
-                        }),
+                        settled: row.settled.map(|s| TimeZone::from_utc_datetime(&Utc, &s)),
+                        updated: row.updated.map(|u| TimeZone::from_utc_datetime(&Utc, &u)),
                         category: row.category,
                     })
                     .collect())
@@ -262,21 +253,11 @@ impl Service for SqliteTransactionService {
                 currency: tx.currency,
                 local_amount: tx.local_amount,
                 local_currency: tx.local_currency,
-                created: DateTime::parse_from_rfc3339(&tx.created)
-                    .unwrap()
-                    .with_timezone(&Utc),
+                created: TimeZone::from_utc_datetime(&Utc, &tx.created),
                 description: tx.description,
                 notes: tx.notes,
-                settled: tx.settled.map(|s| {
-                    DateTime::parse_from_rfc3339(&s)
-                        .unwrap()
-                        .with_timezone(&Utc)
-                }),
-                updated: tx.updated.map(|u| {
-                    DateTime::parse_from_rfc3339(&u)
-                        .unwrap()
-                        .with_timezone(&Utc)
-                }),
+                settled: tx.settled.map(|s| TimeZone::from_utc_datetime(&Utc, &s)),
+                updated: tx.updated.map(|u| TimeZone::from_utc_datetime(&Utc, &u)),
                 category: tx.category,
             }),
             Err(e) => {
@@ -385,8 +366,8 @@ mod tests {
     async fn read_transactions() {
         // Arrange
         let (pool, _tmp) = test_db().await;
-        // println!("->> {:?}", _tmp);
-        // _tmp.leak();
+        println!("->> {:?}", _tmp);
+        _tmp.leak();
         let service = SqliteTransactionService::new(pool);
 
         // Act

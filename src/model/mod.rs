@@ -78,6 +78,8 @@ impl DatabasePool {
             closed: false,
             created: chrono::Utc::now(),
             description: "Main Account".to_string(),
+            currency: "GBP".to_string(),
+            country_code: "GB".to_string(),
             owner_type: "personal".to_string(),
             account_number: "12345678".to_string(),
             sort_code: "12-34-56".to_string(),
@@ -85,13 +87,17 @@ impl DatabasePool {
 
         sqlx::query!(
             r#"
-            INSERT INTO accounts (id, closed, created, description, owner_type, account_number, sort_code)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            INSERT INTO accounts (
+                id, closed, created, description, currency, country_code, owner_type, account_number, sort_code
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             "#,
             account.id,
             account.closed,
             account.created,
             account.description,
+            account.currency,
+            account.country_code,
             account.owner_type,
             account.account_number,
             account.sort_code,

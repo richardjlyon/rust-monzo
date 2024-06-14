@@ -5,6 +5,8 @@ CREATE TABLE accounts (
     closed BOOLEAN NOT NULL,
     created DATETIME NOT NULL,
     description TEXT NOT NULL ,
+    currency TEXT NOT NULL,
+    country_code TEXT NOT NULL,
     owner_type TEXT  NOT NULL,
     account_number TEXT NOT NULL,
     sort_code TEXT NOT NULL
@@ -27,11 +29,11 @@ CREATE TABLE transactions (
     currency TEXT NOT NULL,
     local_amount INTEGER NOT NULL,
     local_currency TEXT NOT NULL,
-    created TEXT NOT NULL,
+    created DATETIME NOT NULL,
     description TEXT,
     notes TEXT,
-    settled TEXT,
-    updated TEXT,
+    settled DATETIME,
+    updated DATETIME,
     category TEXT NOT NULL,
 
     FOREIGN KEY(account_id) REFERENCES accounts(id),
