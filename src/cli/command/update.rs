@@ -18,7 +18,9 @@ use crate::{
         account::{Account, Service as AccountService, SqliteAccountService},
         merchant::Merchant,
         pots::{Pot, Service, SqlitePotService},
-        transaction::{Service as TransactionService, SqliteTransactionService, Transaction},
+        transaction::{
+            Service as TransactionService, SqliteTransactionService, TransactionResponse,
+        },
         DatabasePool,
     },
 };
@@ -41,7 +43,7 @@ pub async fn update(
     let (pots, pot_names) = get_pots(connection_pool.clone(), &accounts).await?;
     persist_pots(connection_pool.clone(), &pots).await?;
 
-    let transactions = get_sorted_transactions(&accounts, &since, before).await?;
+    let transactions = get_sorted_transactions(&accounts, since, before).await?;
     info!("->> Fetched {} transactions", transactions.len());
     persist_transactions(connection_pool.clone(), &transactions).await?;
 
@@ -86,10 +88,10 @@ async fn get_sorted_transactions(
     accounts: &Vec<Account>,
     since: &DateTime<Utc>,
     before: &DateTime<Utc>,
-) -> Result<Vec<Transaction>, Error> {
+) -> Result<Vec<TransactionResponse>, Error> {
     let monzo = Monzo::new()?;
 
-    let mut txs: Vec<Transaction> = Vec::new();
+    let mut txs: Vec<TransactionResponse> = Vec::new();
 
     let monthly_intervals = IntervalGenerator::new()
         .with_grouping(Grouping::PerMonth)
@@ -123,7 +125,7 @@ async fn get_sorted_transactions(
 
 /// Print the transactions to the console
 fn print_transactions(
-    transactions: &Vec<Transaction>,
+    transactions: &Vec<TransactionResponse>,
     account_names: &HashMap<String, String>,
     pot_names: &HashMap<String, String>,
 ) -> Result<(), Error> {
@@ -135,13 +137,13 @@ fn print_transactions(
     for tx in transactions {
         let date_fmt = format_date(&tx.created);
 
-        let account_name_fmt = format_account_name(&account_names, &tx.account_id);
+        let account_name_fmt = format_account_name(account_names, &tx.account_id);
 
         let description = match &tx.description {
             Some(d) => d,
             None => "",
         };
-        let pot_fmt = format_pot(&pot_names, &description);
+        let pot_fmt = format_pot(pot_names, description);
 
         let amount = amount_with_currency(tx.amount, &tx.currency)?;
         let credit_fmt = format_credit(tx.amount, &amount);
@@ -156,18 +158,10 @@ fn print_transactions(
             None => "",
         };
 
-        let description_fmt = format_description(&notes, &description, &pot_names);
+        let description_fmt = format_description(notes, description, pot_names);
 
         println!(
-            "{:<11} {:<8} {:<25} {:>12} {:>12} {:>12} {:>30}  {:<30} ",
-            date_fmt,
-            account_name_fmt,
-            pot_fmt,
-            credit_fmt,
-            debit_fmt,
-            local_amount_fmt,
-            merchant_fmt,
-            description_fmt
+            "{date_fmt:<11} {account_name_fmt:<8} {pot_fmt:<25} {credit_fmt:>12} {debit_fmt:>12} {local_amount_fmt:>12} {merchant_fmt:>30}  {description_fmt:<30} ",
         );
     }
 
@@ -181,7 +175,7 @@ async fn persist_accounts(
 ) -> Result<(), Error> {
     let account_service = SqliteAccountService::new(connection_pool.clone());
     for account in accounts {
-        match account_service.save_account(&account).await {
+        match account_service.save_account(account).await {
             Ok(()) => info!("Added account: {}", account.id),
             Err(Error::Duplicate(_)) => (),
             Err(e) => {
@@ -198,7 +192,7 @@ async fn persist_accounts(
 async fn persist_pots(connection_pool: DatabasePool, pots: &Vec<Pot>) -> Result<(), Error> {
     let pot_service = SqlitePotService::new(connection_pool.clone());
     for pot in pots {
-        match pot_service.save_pot(&pot).await {
+        match pot_service.save_pot(pot).await {
             Ok(()) => info!("Added pot: {}", pot.id),
             Err(Error::Duplicate(_)) => (),
             Err(e) => {
@@ -214,16 +208,16 @@ async fn persist_pots(connection_pool: DatabasePool, pots: &Vec<Pot>) -> Result<
 // Persist the transactions to the database
 async fn persist_transactions(
     connection_pool: DatabasePool,
-    transactions: &Vec<Transaction>,
+    transactions: &[TransactionResponse],
 ) -> Result<(), Error> {
     let tx_service = SqliteTransactionService::new(connection_pool.clone());
 
-    for tx in transactions {
-        match tx_service.save_transaction(&tx).await {
-            Ok(()) => info!("Added transaction: {}", tx.id),
+    for tx_resp in transactions {
+        match tx_service.save_transaction(&tx_resp).await {
+            Ok(()) => info!("Added transaction: {}", tx_resp.id),
             Err(Error::Duplicate(_)) => (),
             Err(e) => {
-                error!("Adding transaction: {}", tx.id);
+                error!("Adding transaction: {}", tx_resp.id);
                 return Err(e);
             }
         }
@@ -277,32 +271,26 @@ fn format_pot(pot_names: &HashMap<String, String>, description: &str) -> String 
 }
 
 fn format_credit(amount: i64, amount_str: &str) -> String {
-    let credit_fmt = if amount >= 0 {
+    if amount >= 0 {
         amount_str.to_string()
     } else {
         String::new()
-    };
-
-    credit_fmt
+    }
 }
 
 fn format_debit(amount: i64, amount_str: &str) -> String {
-    let debit_fmt = if amount < 0 {
+    if amount < 0 {
         amount_str.to_string()
     } else {
         String::new()
-    };
-
-    debit_fmt
+    }
 }
 
 fn format_merchant(merchant: &Option<Merchant>) -> String {
-    let merchant_fmt = match merchant {
+    match merchant {
         Some(merchant) => merchant.name.clone(),
         None => String::new(),
-    };
-
-    merchant_fmt
+    }
 }
 
 fn format_description(

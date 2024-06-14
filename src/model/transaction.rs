@@ -14,12 +14,13 @@ use crate::error::AppErrors as Error;
 
 #[derive(Deserialize, Debug)]
 pub struct Transactions {
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<TransactionResponse>,
 }
 
+/// Represents a transaction response from the Monzo API
 #[allow(clippy::module_name_repetitions)]
-#[derive(Deserialize, Debug, Default)]
-pub struct Transaction {
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct TransactionResponse {
     pub id: String,
     pub account_id: String,
     pub merchant: Option<Merchant>,
@@ -41,6 +42,7 @@ pub struct Transaction {
     // pub dedupe_id: String,
 }
 
+/// Represents an attachment from the Monzo API
 #[derive(Deserialize, Debug)]
 pub struct Attachment {
     id: String,
@@ -50,11 +52,51 @@ pub struct Attachment {
     created: DateTime<Utc>,
 }
 
+/// Represents a transaction from the database
+#[derive(Debug, Default)]
+pub struct Transaction {
+    pub id: String,
+    pub account_id: String,
+    pub merchant_id: Option<String>,
+    pub amount: i64,
+    pub currency: String,
+    pub local_amount: i64,
+    pub local_currency: String,
+    pub created: DateTime<Utc>,
+    pub description: Option<String>,
+    pub notes: Option<String>,
+    pub settled: Option<DateTime<Utc>>,
+    pub updated: Option<DateTime<Utc>>,
+    pub category: String,
+}
+
+impl From<TransactionResponse> for Transaction {
+    fn from(tx: TransactionResponse) -> Self {
+        Self {
+            id: tx.id,
+            account_id: tx.account_id,
+            merchant_id: tx.merchant.map(|m| m.id),
+            amount: tx.amount,
+            currency: tx.currency,
+            local_amount: tx.local_amount,
+            local_currency: tx.local_currency,
+            created: tx.created,
+            description: tx.description,
+            notes: tx.notes,
+            settled: tx.settled,
+            updated: tx.updated,
+            category: tx.category,
+        }
+    }
+}
+
 // -- Services -------------------------------------------------------------------------
 
 #[async_trait]
 pub trait Service {
-    async fn save_transaction(&self, tx_fc: &Transaction) -> Result<(), Error>;
+    async fn save_transaction(&self, tx_resp: &TransactionResponse) -> Result<(), Error>;
+    async fn read_transactions(&self) -> Result<Vec<Transaction>, Error>;
+    async fn read_transaction(&self, tx_id: &str) -> Result<Transaction, Error>;
     async fn delete_all_transactions(&self) -> Result<(), Error>;
 }
 
@@ -76,30 +118,20 @@ impl SqliteTransactionService {
 impl Service for SqliteTransactionService {
     #[tracing::instrument(
         name = "Create transaction",
-        skip(self, tx_fc),
-        fields(tx_id = %tx_fc.id, acc_id = %tx_fc.account_id)
+        skip(self, tx_resp),
+        fields(tx_id = %tx_resp.id, acc_id = %tx_resp.account_id)
     )]
-    async fn save_transaction(&self, tx_fc: &Transaction) -> Result<(), Error> {
+    async fn save_transaction(&self, tx_resp: &TransactionResponse) -> Result<(), Error> {
         let db = self.pool.db();
 
-        if is_duplicate_transaction(db, &tx_fc.id).await? {
+        let tx = Transaction::from(tx_resp.clone());
+
+        if is_duplicate_transaction(db, &tx.id).await? {
             info!("Transaction exists. Skipping");
             return Err(Error::Duplicate("Transaction already exists".to_string()));
         }
 
-        // if the transaction has a merchant and it doesn't exist in the db...
-        if let Some(merchant_id) = transaction_merchant_id(tx_fc) {
-            if !merchant_exists(&self.pool, &merchant_id).await? {
-                // ...insert the merchant
-                let merchant = tx_fc
-                    .merchant
-                    .as_ref()
-                    .expect("Merchant not found in transaction");
-                insert_merchant(&self.pool, merchant).await?;
-            }
-        }
-
-        let merchant_id = transaction_merchant_id(tx_fc);
+        let merchant_id = insert_merchant(self.pool.clone(), &tx_resp.merchant).await?;
 
         info!("Inserting transaction");
         match sqlx::query!(
@@ -121,38 +153,74 @@ impl Service for SqliteTransactionService {
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ",
-            tx_fc.id,
-            tx_fc.account_id,
+            tx.id,
+            tx.account_id,
             merchant_id,
-            tx_fc.amount,
-            tx_fc.currency,
-            tx_fc.local_amount,
-            tx_fc.local_currency,
-            tx_fc.created,
-            tx_fc.description,
-            tx_fc.notes,
-            tx_fc.settled,
-            tx_fc.updated,
-            tx_fc.category,
+            tx.amount,
+            tx.currency,
+            tx.local_amount,
+            tx.local_currency,
+            tx.created,
+            tx.description,
+            tx.notes,
+            tx.settled,
+            tx.updated,
+            tx.category,
         )
         .execute(db)
         .await
         {
             Ok(_) => {
-                info!("Created transaction: {}", tx_fc.id);
+                info!("Created transaction: {}", tx.id);
                 Ok(())
             }
             Err(e) => {
                 error!(
                     "Failed to create transaction: {}. Reason: {}. Account id: {}. Merchant id: {}",
-                    tx_fc.id,
+                    tx.id,
                     e.to_string(),
-                    tx_fc.account_id,
-                    merchant_id.unwrap_or("None".to_string()),
+                    tx.account_id,
+                    tx.merchant_id.clone().unwrap_or("None".to_string()),
                 );
                 Err(Error::DbError(e.to_string()))
             }
         }
+    }
+
+    #[tracing::instrument(name = "Read transactions", skip(self))]
+    async fn read_transactions(&self) -> Result<Vec<Transaction>, Error> {
+        todo!("Implement read_transactions")
+    }
+
+    #[tracing::instrument(name = "Read transaction", skip(self))]
+    async fn read_transaction(&self, tx_id: &str) -> Result<Transaction, Error> {
+        let _db = self.pool.db();
+
+        todo!("Implement read_transaction")
+
+        // match sqlx::query_as!(
+        //     Transaction,
+        //     r"
+        //         SELECT * FROM transactions WHERE id = $1
+        //     ",
+        //     tx_id
+        // )
+        // .fetch_one(db)
+        // .await
+        // {
+        //     Ok(tx) => {
+        //         info!("Read transaction: {}", tx_id);
+        //         Ok(tx)
+        //     }
+        //     Err(e) => {
+        //         error!(
+        //             "Failed to read transaction: {}. Reason: {}",
+        //             tx_id,
+        //             e.to_string()
+        //         );
+        //         Err(Error::DbError(e.to_string()))
+        //     }
+        // }
     }
 
     #[tracing::instrument(name = "Delete all transactions", skip(self))]
@@ -207,23 +275,25 @@ async fn is_duplicate_transaction(db: &Pool<Sqlite>, tx_id: &str) -> Result<bool
     Ok(existing_transaction.is_some())
 }
 
-// check if a transaction has a merchant
-fn transaction_merchant_id(transaction: &Transaction) -> Option<String> {
-    transaction.merchant.as_ref().map(|m| m.id.clone())
-}
+/// Insert a merchant into the database if it exists and isn't a duplicate
+/// Returns the merchant id if it was inserted
+///
+/// # Errors
+/// Will return an error if a merchant could not be retrieved from the database
+async fn insert_merchant(
+    pool: DatabasePool,
+    merchant: &Option<Merchant>,
+) -> Result<Option<String>, Error> {
+    if merchant.is_none() {
+        return Ok(None);
+    }
 
-// check if a merchant exists
-async fn merchant_exists(db: &DatabasePool, merchant_id: &str) -> Result<bool, Error> {
-    let merchant_service = SqliteMerchantService::new(db.clone());
-    let merchant = merchant_service.get_merchant(merchant_id).await?;
-
-    Ok(merchant.is_some())
-}
-
-// insert a merchant
-async fn insert_merchant(db: &DatabasePool, merchant: &Merchant) -> Result<(), Error> {
-    let merchant_service = SqliteMerchantService::new(db.clone());
-    merchant_service.save_merchant(merchant).await
+    let merchant_service = SqliteMerchantService::new(pool);
+    let merchant = merchant.as_ref().unwrap();
+    match merchant_service.save_merchant(&merchant).await {
+        Ok(_) | Err(Error::Duplicate(_)) => return Ok(Some(merchant.id.clone())),
+        Err(e) => return Err(e),
+    }
 }
 
 // -- Tests ----------------------------------------------------------------------------
@@ -234,17 +304,25 @@ mod tests {
     use crate::tests::test::test_db;
 
     #[tokio::test]
-    async fn create_transaction() {
+    async fn save_transaction() {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteTransactionService::new(pool);
-        let mut tx = Transaction::default();
-        tx.account_id = "1".to_string();
+        let mut tx_resp = TransactionResponse::default();
+        tx_resp.account_id = "1".to_string();
 
         // Act
-        let result = service.save_transaction(&tx).await;
+        let result = service.save_transaction(&tx_resp).await;
 
         //Assert
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    #[ignore]
+    async fn read_transactions() {}
+
+    #[tokio::test]
+    #[ignore]
+    async fn read_transaction() {}
 }

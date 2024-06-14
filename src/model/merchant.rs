@@ -35,7 +35,7 @@ pub struct Address {
 
 #[async_trait]
 pub trait Service {
-    async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error>;
+    async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<String, Error>;
     async fn get_merchant(&self, merchant_id: &str) -> Result<Option<Merchant>, Error>;
 }
 
@@ -60,7 +60,11 @@ impl Service for SqliteMerchantService {
         skip(self, merchant_fc),
         fields(tx_id = %merchant_fc.id, merchant_id = %merchant_fc.id)
     )]
-    async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<(), Error> {
+    /// Save a merchant to the database returning the merchant id
+    ///
+    /// # Errors
+    /// Will return an error if the merchant already exists or create fails
+    async fn save_merchant(&self, merchant_fc: &Merchant) -> Result<String, Error> {
         let db = self.pool.db();
 
         if is_duplicate_merchant(db, &merchant_fc.id).await? {
@@ -86,7 +90,7 @@ impl Service for SqliteMerchantService {
         {
             Ok(_) => {
                 info!("Created merchant: {:?}", merchant_fc.id);
-                Ok(())
+                Ok(merchant_fc.id.clone())
             }
             Err(e) => {
                 error!("Failed to create merchant: {:?}", merchant_fc.id);
