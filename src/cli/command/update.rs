@@ -17,7 +17,7 @@ use crate::{
     model::{
         account::{Account, Service as AccountService, SqliteAccountService},
         merchant::Merchant,
-        pots::{Pot, Service, SqlitePotService},
+        pot::{Pot, Service, SqlitePotService},
         transaction::{
             Service as TransactionService, SqliteTransactionService, TransactionResponse,
         },

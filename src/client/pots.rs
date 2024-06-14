@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use super::Monzo;
 use crate::error::AppErrors as Error;
-use crate::model::pots::{Pot, Pots};
+use crate::model::pot::{Pot, Pots};
 
 impl Monzo {
     /// Get all pots that are not deleted for a given account

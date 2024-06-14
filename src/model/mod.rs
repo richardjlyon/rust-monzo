@@ -11,7 +11,7 @@ use crate::error::AppErrors as Error;
 pub mod account;
 pub mod balance;
 pub mod merchant;
-pub mod pots;
+pub mod pot;
 pub mod transaction;
 
 /// A holder for a backing store. Allows swapping out implementations.

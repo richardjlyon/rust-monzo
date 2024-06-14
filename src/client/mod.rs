@@ -12,7 +12,7 @@ use tracing_log::log::{error, info};
 use crate::configuration::get_config;
 
 mod accounts;
-mod balance;
+mod balances;
 mod pots;
 pub mod transactions;
 mod whoami;
