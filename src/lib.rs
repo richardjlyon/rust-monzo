@@ -6,6 +6,7 @@
 // ban unsafe
 #![forbid(unsafe_code)]
 
+pub mod beancount;
 pub mod cli;
 pub mod client;
 pub mod configuration;

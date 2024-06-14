@@ -38,3 +38,14 @@ cargo sqlx prepare
 - Refresh token handling
 - Error handling. See: https://docs.monzo.com/?shell#errors
 - implement Axiom telemetry: https://axiom.co/docs
+
+## Beancount cheat sheet
+
+Types of Accounts:
+
+- Balance Sheet - A balance that is meaningful at a point in time.
+  - Assets (+ve) Something owned
+  - Liabilities (-ve) Something owed
+- Income Statement - A balance that is meaningful over a period of time.
+  - Income (-ve) Something received
+  - Expenses (+ve) Something given away

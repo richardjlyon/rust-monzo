@@ -1,0 +1,16 @@
+beancount_filepath = "/Users/richardlyon/beancount"
+start_date = "2024-01-01"
+
+# [[assets]]
+
+[[liabilities]]
+name = "AccountsPayable"
+account_type = "Liabilities"
+currency = "GBP"
+provider = "Monzo"
+
+[[equities]]
+account_type = "Equity"
+currency = "GBP"
+provider = "Monzo"
+name = "Opening-Balances"

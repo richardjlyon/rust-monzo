@@ -16,7 +16,7 @@ use crate::error::AppErrors as Error;
 pub struct BeanSettings {
     pub beancount_filepath: PathBuf,
     pub start_date: NaiveDate,
-    pub assets: Vec<Account>,
+    pub assets: Option<Vec<Account>>,
     pub liabilities: Vec<Account>,
     pub equities: Vec<Account>,
 }

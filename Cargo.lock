@@ -287,6 +287,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
+name = "capitalize"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b5271031022835ee8c7582fe67403bd6cb3d962095787af7921027234bab5bf"
+
+[[package]]
 name = "cc"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,6 +1260,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
+ "capitalize",
  "chrono",
  "chrono-intervals",
  "clap",
@@ -1271,10 +1278,13 @@ dependencies = [
  "serde_path_to_error",
  "serde_yaml",
  "sqlx",
+ "strum",
+ "strum_macros",
  "temp-dir",
  "thiserror",
  "tokio",
  "tokio-util",
+ "toml",
  "tracing",
  "tracing-bunyan-formatter",
  "tracing-log 0.2.0",
@@ -2461,6 +2471,28 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "strum"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d8cec3501a5194c432b2b7976db6b7d10ec95c253208b45f83f7136aa985e29"
+dependencies = [
+ "strum_macros",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.26.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.66",
+]
 
 [[package]]
 name = "subtle"

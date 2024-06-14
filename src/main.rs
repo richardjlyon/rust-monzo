@@ -37,11 +37,15 @@ async fn main() -> Result<(), Error> {
                 since = before - chrono::Duration::days(*days);
             }
 
-            match command::update(connection_pool, &since, &before).await {
+            match command::update(pool, &since, &before).await {
                 Ok(_) => {}
                 Err(e) => eprintln!("Error: {}", e),
             }
         }
+        Commands::Bean {} => match command::beancount(pool).await {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {}", e),
+        },
         Commands::Auth {} => match command::auth().await {
             Ok(_) => println!("Auth completed"),
             Err(e) => eprintln!("Error: {}", e),
