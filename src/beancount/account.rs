@@ -19,7 +19,7 @@ pub struct Account {
 pub enum AccountType {
     Assets,
     Liabilities,
-    Equity,
+    Equities,
     Income,
     Expense,
 }

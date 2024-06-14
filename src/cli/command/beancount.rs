@@ -14,78 +14,21 @@ use crate::{
 };
 
 pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
-    // let _db = pool.db();
-    let bc = Beancount::from_config()?;
-    let acc_service = SqliteAccountService::new(pool.clone());
-    let pot_service = SqlitePotService::new(pool.clone());
-    let _tx_service = SqliteTransactionService::new(pool.clone());
-
     let mut directives: Vec<Directive> = Vec::new();
 
     // Open assets
     directives.push(Directive::Comment("assets".to_string()));
-
-    // -- from database
-
-    let accounts = acc_service.read_accounts().await?;
-    for account in accounts {
-        let beanaccount = BeanAccount {
-            account_type: AccountType::Assets,
-            currency: account.currency,
-            provider: "Monzo".to_string(),
-            name: account.owner_type,
-        };
-        directives.push(Directive::Open(bc.settings.start_date, beanaccount, None));
-    }
-
-    let pots = pot_service.read_pots().await?;
-    for pot in pots {
-        let beanaccount = BeanAccount {
-            account_type: AccountType::Assets,
-            currency: pot.currency,
-            provider: "Monzo".to_string(),
-            name: pot.name,
-        };
-        directives.push(Directive::Open(bc.settings.start_date, beanaccount, None));
-    }
-
-    // -- from configuration
-
-    if bc.settings.assets.is_some() {
-        for account in bc.settings.assets.unwrap() {
-            let beanaccount = BeanAccount {
-                name: account.name,
-                account_type: AccountType::Assets,
-                currency: account.currency,
-                provider: "Monzo".to_string(),
-            };
-            directives.push(Directive::Open(bc.settings.start_date, beanaccount, None));
-        }
-    }
+    directives.extend(monzo_assets(pool.clone()).await?);
+    directives.extend(monzo_pots(pool.clone()).await?);
+    directives.extend(config_assets().await?);
 
     // Open liabilities
     directives.push(Directive::Comment("liabilities".to_string()));
-
-    for account in bc.settings.liabilities {
-        directives.push(Directive::Open(
-            bc.settings.start_date,
-            account.clone(),
-            None,
-        ));
-    }
+    directives.extend(config_liabilities().await?);
 
     // Open equity accounts
     directives.push(Directive::Comment("equities".to_string()));
-
-    for account in bc.settings.equities {
-        let beanaccount = BeanAccount {
-            account_type: AccountType::Equity,
-            currency: account.currency,
-            provider: "Monzo".to_string(),
-            name: account.name,
-        };
-        directives.push(Directive::Open(bc.settings.start_date, beanaccount, None));
-    }
+    directives.extend(config_equities().await?);
 
     // Banking - Get January `Personal` transactions
 
@@ -103,4 +46,109 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
+    let bc = Beancount::from_config()?;
+    let open_date = bc.settings.start_date;
+    let acc_service = SqliteAccountService::new(pool.clone());
+    let mut directives: Vec<Directive> = Vec::new();
+    let accounts = acc_service.read_accounts().await?;
+
+    for account in accounts {
+        let beanaccount = BeanAccount {
+            account_type: AccountType::Assets,
+            currency: account.currency,
+            provider: "Monzo".to_string(),
+            name: account.owner_type,
+        };
+        directives.push(Directive::Open(open_date, beanaccount, None));
+    }
+
+    Ok(directives)
+}
+
+async fn monzo_pots(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
+    let bc = Beancount::from_config()?;
+    let open_date = bc.settings.start_date;
+    let pot_service = SqlitePotService::new(pool.clone());
+    let mut directives: Vec<Directive> = Vec::new();
+    let pots = pot_service.read_pots().await?;
+    for pot in pots {
+        let beanaccount = BeanAccount {
+            account_type: AccountType::Assets,
+            currency: pot.currency,
+            provider: "Monzo".to_string(),
+            name: pot.name,
+        };
+        directives.push(Directive::Open(open_date, beanaccount, None));
+    }
+
+    Ok(directives)
+}
+
+async fn config_assets() -> Result<Vec<Directive>, Error> {
+    let bc = Beancount::from_config()?;
+    let open_date = bc.settings.start_date;
+    let mut directives: Vec<Directive> = Vec::new();
+
+    if bc.settings.assets.is_none() {
+        return Ok(directives);
+    }
+
+    for account in bc.settings.assets.unwrap() {
+        let beanaccount = BeanAccount {
+            name: account.name,
+            account_type: AccountType::Assets,
+            currency: account.currency,
+            provider: account.provider,
+        };
+        directives.push(Directive::Open(open_date, beanaccount, None));
+    }
+
+    Ok(directives)
+}
+
+async fn config_liabilities() -> Result<Vec<Directive>, Error> {
+    let bc = Beancount::from_config()?;
+    let open_date = bc.settings.start_date;
+    let mut directives: Vec<Directive> = Vec::new();
+
+    if bc.settings.liabilities.is_none() {
+        return Ok(directives);
+    }
+
+    for account in bc.settings.liabilities.unwrap() {
+        let beanaccount = BeanAccount {
+            name: account.name,
+            account_type: AccountType::Liabilities,
+            currency: account.currency,
+            provider: account.provider,
+        };
+        directives.push(Directive::Open(open_date, beanaccount, None));
+    }
+
+    Ok(directives)
+}
+
+async fn config_equities() -> Result<Vec<Directive>, Error> {
+    let bc = Beancount::from_config()?;
+    let open_date = bc.settings.start_date;
+    let mut directives: Vec<Directive> = Vec::new();
+
+    if bc.settings.equities.is_none() {
+        return Ok(directives);
+    }
+
+    for account in bc.settings.equities.unwrap() {
+        let beanaccount = BeanAccount {
+            name: account.name,
+            account_type: AccountType::Equities,
+            currency: account.currency,
+            provider: account.provider,
+        };
+        directives.push(Directive::Open(open_date, beanaccount, None));
+    }
+
+    Ok(directives)
 }

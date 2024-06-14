@@ -1,7 +1,11 @@
 beancount_filepath = "/Users/richardlyon/beancount"
 start_date = "2024-01-01"
 
-# [[assets]]
+[[assets]]
+name = "Personal"
+account_type = "Assets"
+currency = "GBP"
+provider = "Starling"
 
 [[liabilities]]
 name = "AccountsPayable"
@@ -10,7 +14,7 @@ currency = "GBP"
 provider = "Monzo"
 
 [[equities]]
-account_type = "Equity"
+account_type = "Equities"
 currency = "GBP"
 provider = "Monzo"
 name = "Opening-Balances"

@@ -24,8 +24,8 @@ pub struct BeanSettings {
     pub beancount_filepath: PathBuf,
     pub start_date: NaiveDate,
     pub assets: Option<Vec<Account>>,
-    pub liabilities: Vec<Account>,
-    pub equities: Vec<Account>,
+    pub liabilities: Option<Vec<Account>>,
+    pub equities: Option<Vec<Account>>,
 }
 
 /// A struct representing a Beancount file
@@ -46,20 +46,12 @@ impl Beancount {
             ))
             .build()?;
 
-        let settings = cfg.try_deserialize::<BeanSettings>()?;
-
-        Ok(Beancount { settings })
-    }
-
-    pub fn add_directive(&self, _directive: &Directive) {
-        todo!()
-    }
-
-    pub fn add_transaction(&self, _transaction: &Transaction) {
-        todo!()
-    }
-
-    pub fn to_string(&self) -> String {
-        todo!()
+        match cfg.try_deserialize::<BeanSettings>() {
+            Ok(settings) => Ok(Beancount { settings }),
+            Err(e) => {
+                println!("{}", e.to_string());
+                Err(Error::ConfigurationError(e))
+            }
+        }
     }
 }

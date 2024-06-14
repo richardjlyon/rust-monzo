@@ -102,7 +102,7 @@ mod tests {
 
         // Act
         let transaction_string = transaction.to_formatted_string();
-        println!("{}", transaction_string);
+
         // Assert
         assert_eq!(transaction_string, expected);
     }
