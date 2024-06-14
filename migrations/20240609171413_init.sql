@@ -20,7 +20,7 @@ CREATE TABLE pots (
 );
 
 CREATE TABLE transactions (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY NOT NULL,
     account_id TEXT NOT NULL,
     merchant_id TEXT,
     amount INTEGER NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE transactions (
     notes TEXT,
     settled DATETIME,
     updated DATETIME,
-    category TEXT,
+    category TEXT NOT NULL,
 
     FOREIGN KEY(account_id) REFERENCES accounts(id),
     FOREIGN KEY(merchant_id) REFERENCES merchants(id)

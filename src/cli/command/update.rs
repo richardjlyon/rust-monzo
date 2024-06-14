@@ -137,7 +137,11 @@ fn print_transactions(
 
         let account_name_fmt = format_account_name(&account_names, &tx.account_id);
 
-        let pot_fmt = format_pot(&pot_names, &tx.description);
+        let description = match &tx.description {
+            Some(d) => d,
+            None => "",
+        };
+        let pot_fmt = format_pot(&pot_names, &description);
 
         let amount = amount_with_currency(tx.amount, &tx.currency)?;
         let credit_fmt = format_credit(tx.amount, &amount);
@@ -147,7 +151,12 @@ fn print_transactions(
 
         let merchant_fmt = format_merchant(&tx.merchant);
 
-        let description_fmt = format_description(&tx.notes, &tx.description, &pot_names);
+        let notes = match &tx.notes {
+            Some(d) => d,
+            None => "",
+        };
+
+        let description_fmt = format_description(&notes, &description, &pot_names);
 
         println!(
             "{:<11} {:<8} {:<25} {:>12} {:>12} {:>12} {:>30}  {:<30} ",

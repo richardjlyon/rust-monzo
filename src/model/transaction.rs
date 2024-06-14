@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
 use sqlx::{Pool, Sqlite};
-use std::collections::HashMap;
 use tracing_log::log::{error, info};
 
 use super::{
@@ -22,25 +21,24 @@ pub struct Transactions {
 #[derive(Deserialize, Debug, Default)]
 pub struct Transaction {
     pub id: String,
-    pub dedupe_id: String,
     pub account_id: String,
+    pub merchant: Option<Merchant>,
     pub amount: i64,
     pub currency: String,
     pub local_amount: i64,
     pub local_currency: String,
-    // #[serde(deserialize_with = "deserialize_optional_datetime")]
     pub created: DateTime<Utc>,
-    pub description: String,
-    pub amount_is_pending: bool,
-    pub merchant: Option<Merchant>,
-    pub notes: String,
+    pub description: Option<String>,
+    pub notes: Option<String>,
     #[serde(deserialize_with = "deserialize_optional_datetime")]
     pub settled: Option<DateTime<Utc>>,
     #[serde(deserialize_with = "deserialize_optional_datetime")]
     pub updated: Option<DateTime<Utc>>,
     pub category: String,
-    pub categories: HashMap<String, i32>,
-    pub attachments: Option<Vec<Attachment>>,
+    // pub categories: HashMap<String, i32>,
+    // pub attachments: Option<Vec<Attachment>>,
+    // pub amount_is_pending: bool,
+    // pub dedupe_id: String,
 }
 
 #[derive(Deserialize, Debug)]
