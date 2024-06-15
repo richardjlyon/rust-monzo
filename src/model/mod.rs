@@ -1,10 +1,11 @@
-use account::Account;
+use account::AccountForDB;
+use chrono::Utc;
 use pot::Pot;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
 };
-use transaction::Transaction;
+use transaction::TransactionForDB;
 
 use crate::configuration::Settings;
 use crate::error::AppErrors as Error;
@@ -74,10 +75,10 @@ impl DatabasePool {
         let db = self.db();
 
         // insert account
-        let account = Account {
+        let account = AccountForDB {
             id: "1".to_string(),
             closed: false,
-            created: chrono::Utc::now(),
+            created: Utc::now().naive_utc(),
             description: "Main Account".to_string(),
             currency: "GBP".to_string(),
             country_code: "GB".to_string(),
@@ -108,11 +109,11 @@ impl DatabasePool {
 
         // insert transactions
 
-        let mut tx1 = Transaction::default();
+        let mut tx1 = TransactionForDB::default();
         tx1.id = "1".to_string();
         tx1.account_id = account.id.clone();
 
-        let mut tx2 = Transaction::default();
+        let mut tx2 = TransactionForDB::default();
         tx2.id = "2".to_string();
         tx2.account_id = account.id.clone();
 

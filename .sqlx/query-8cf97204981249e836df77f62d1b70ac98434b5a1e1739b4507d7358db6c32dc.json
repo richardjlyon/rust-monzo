@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT *\n                FROM transactions\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "account_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "merchant_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "amount",
+        "ordinal": 3,
+        "type_info": "Int64"
+      },
+      {
+        "name": "currency",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "local_amount",
+        "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "local_currency",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "description",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "notes",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "settled",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "category",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "8cf97204981249e836df77f62d1b70ac98434b5a1e1739b4507d7358db6c32dc"
+}

@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use chrono_intervals::{Grouping, IntervalGenerator};
 use rusty_money::{iso, Money};
 use tracing_log::log::{error, info};
@@ -15,7 +15,7 @@ use crate::{
     client::Monzo,
     error::AppErrors as Error,
     model::{
-        account::{Account, Service as AccountService, SqliteAccountService},
+        account::{AccountForDB, Service as AccountService, SqliteAccountService},
         merchant::Merchant,
         pot::{Pot, Service, SqlitePotService},
         transaction::{
@@ -34,8 +34,8 @@ use crate::{
 /// Will return errors if the transactions cannot be fetched or persisted.
 pub async fn update(
     connection_pool: DatabasePool,
-    since: &DateTime<Utc>,
-    before: &DateTime<Utc>,
+    since: &NaiveDateTime,
+    before: &NaiveDateTime,
 ) -> Result<(), Error> {
     let (accounts, account_names) = get_accounts(connection_pool.clone()).await?;
     persist_accounts(connection_pool.clone(), &accounts).await?;
@@ -43,11 +43,10 @@ pub async fn update(
     let (pots, pot_names) = get_pots(connection_pool.clone(), &accounts).await?;
     persist_pots(connection_pool.clone(), &pots).await?;
 
-    let transactions = get_sorted_transactions(&accounts, since, before).await?;
-    info!("->> Fetched {} transactions", transactions.len());
-    persist_transactions(connection_pool.clone(), &transactions).await?;
+    let txs_resp = get_sorted_transactions(&accounts, since, before).await?;
+    persist_transactions(connection_pool.clone(), &txs_resp).await?;
 
-    print_transactions(&transactions, &account_names, &pot_names)?;
+    print_transactions(&txs_resp, &account_names, &pot_names)?;
 
     Ok(())
 }
@@ -56,9 +55,11 @@ pub async fn update(
 #[tracing::instrument(name = "get accounts")]
 async fn get_accounts(
     connection_pool: DatabasePool,
-) -> Result<(Vec<Account>, HashMap<String, String>), Error> {
+) -> Result<(Vec<AccountForDB>, HashMap<String, String>), Error> {
     let monzo = Monzo::new()?;
     let accounts = monzo.accounts().await?;
+    // convert account response to account for db
+    let accounts: Vec<AccountForDB> = accounts.into_iter().map(|account| account.into()).collect();
     let account_names = monzo.account_description_from_id().await?;
 
     Ok((accounts, account_names))
@@ -68,7 +69,7 @@ async fn get_accounts(
 #[tracing::instrument(name = "get pots")]
 async fn get_pots(
     connection_pool: DatabasePool,
-    accounts: &Vec<Account>,
+    accounts: &Vec<AccountForDB>,
 ) -> Result<(Vec<Pot>, HashMap<String, String>), Error> {
     let monzo = Monzo::new()?;
     let mut pots: Vec<Pot> = Vec::new();
@@ -85,22 +86,24 @@ async fn get_pots(
 // Get all transactions sorted by date
 #[tracing::instrument(name = "get sorted transactions")]
 async fn get_sorted_transactions(
-    accounts: &Vec<Account>,
-    since: &DateTime<Utc>,
-    before: &DateTime<Utc>,
+    accounts: &Vec<AccountForDB>,
+    since: &NaiveDateTime,
+    before: &NaiveDateTime,
 ) -> Result<Vec<TransactionResponse>, Error> {
     let monzo = Monzo::new()?;
+    let mut txs_resp: Vec<TransactionResponse> = Vec::new();
 
-    let mut txs: Vec<TransactionResponse> = Vec::new();
-
+    // TODO: Replace this crate with a custom implementation
+    let since_utc: DateTime<Utc> = DateTime::from_utc(*since, Utc);
+    let before_utc: DateTime<Utc> = DateTime::from_utc(*before, Utc);
     let monthly_intervals = IntervalGenerator::new()
         .with_grouping(Grouping::PerMonth)
-        .get_intervals(*since, *before);
+        .get_intervals(since_utc, before_utc);
 
     for account in accounts {
         for (since, before) in monthly_intervals.clone() {
             let transactions = monzo
-                .transactions(&account.id, &since, &before, None)
+                .transactions(&account.id, &since.naive_utc(), &before.naive_utc(), None)
                 .await?;
 
             info!("Fetched {} transactions", &transactions.len());
@@ -110,17 +113,15 @@ async fn get_sorted_transactions(
                     continue;
                 }
 
-                txs.push(tx);
+                txs_resp.push(tx);
             }
         }
     }
 
     // sort by date
-    txs.sort_by(|a, b| a.created.cmp(&b.created));
+    txs_resp.sort_by(|a, b| a.created.cmp(&b.created));
 
-    info!("END");
-
-    Ok(txs)
+    Ok(txs_resp)
 }
 
 /// Print the transactions to the console
@@ -171,7 +172,7 @@ fn print_transactions(
 // Persist the accounts to the database
 async fn persist_accounts(
     connection_pool: DatabasePool,
-    accounts: &Vec<Account>,
+    accounts: &Vec<AccountForDB>,
 ) -> Result<(), Error> {
     let account_service = SqliteAccountService::new(connection_pool.clone());
     for account in accounts {

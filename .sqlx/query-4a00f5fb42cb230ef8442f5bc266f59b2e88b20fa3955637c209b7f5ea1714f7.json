@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO pots (id, name, balance, currency, deleted, pot_type)\n            VALUES (?1, ?2, ?3, ?4, ?5, ?6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "4a00f5fb42cb230ef8442f5bc266f59b2e88b20fa3955637c209b7f5ea1714f7"
+}

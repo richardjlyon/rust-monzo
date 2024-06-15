@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT *\n                FROM pots\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "balance",
+        "ordinal": 2,
+        "type_info": "Int64"
+      },
+      {
+        "name": "currency",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted",
+        "ordinal": 4,
+        "type_info": "Bool"
+      },
+      {
+        "name": "pot_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e7b48af09149af84b447b32aa46beb818b1feb022af87d9d4c05394f3973a2c2"
+}

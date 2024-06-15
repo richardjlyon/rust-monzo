@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT *\n                FROM accounts\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "closed",
+        "ordinal": 1,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "currency",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "country_code",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "owner_type",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "account_number",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "sort_code",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5bc52b6751e8032027f251357e66222b53288744f0125698c4579fd58cd23e5e"
+}

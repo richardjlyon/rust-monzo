@@ -1,7 +1,7 @@
 //! Models for the account endpoint
 
 use async_trait::async_trait;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Deserialize;
 use sqlx::{prelude::FromRow, Pool, Sqlite};
 use tracing_log::log::{error, info};
@@ -9,13 +9,15 @@ use tracing_log::log::{error, info};
 use super::DatabasePool;
 use crate::error::AppErrors as Error;
 
+/// Represents Accounts in the Monzo API
 #[derive(Deserialize, Debug)]
 pub struct Accounts {
-    pub accounts: Vec<Account>,
+    pub accounts: Vec<AccountResponse>,
 }
 
+/// Represents an Account in the Monzo API
 #[derive(Deserialize, Debug, Default, FromRow)]
-pub struct Account {
+pub struct AccountResponse {
     pub id: String,
     pub closed: bool,
     pub created: DateTime<Utc>,
@@ -27,12 +29,42 @@ pub struct Account {
     pub sort_code: String,
 }
 
+/// Represents an Account for database operations
+#[derive(Deserialize, Debug, Default, FromRow)]
+pub struct AccountForDB {
+    pub id: String,
+    pub closed: bool,
+    pub created: NaiveDateTime,
+    pub description: String,
+    pub currency: String,
+    pub country_code: String,
+    pub owner_type: String,
+    pub account_number: String,
+    pub sort_code: String,
+}
+
+impl From<AccountResponse> for AccountForDB {
+    fn from(acc: AccountResponse) -> Self {
+        Self {
+            id: acc.id,
+            created: acc.created.naive_utc(),
+            closed: acc.closed,
+            description: acc.description,
+            currency: acc.currency,
+            country_code: acc.country_code,
+            owner_type: acc.owner_type,
+            account_number: acc.account_number,
+            sort_code: acc.sort_code,
+        }
+    }
+}
+
 // -- Services ------------------------------------------------
 
 #[async_trait]
 pub trait Service {
-    async fn save_account(&self, acc_fc: &Account) -> Result<(), Error>;
-    async fn read_accounts(&self) -> Result<Vec<Account>, Error>;
+    async fn save_account(&self, acc_fc: &AccountForDB) -> Result<(), Error>;
+    async fn read_accounts(&self) -> Result<Vec<AccountForDB>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +88,7 @@ impl Service for SqliteAccountService {
         skip(self, acc_fc),
         fields(id = %acc_fc.id)
     )]
-    async fn save_account(&self, acc_fc: &Account) -> Result<(), Error> {
+    async fn save_account(&self, acc_fc: &AccountForDB) -> Result<(), Error> {
         let db = self.pool.db();
 
         if is_duplicate_account(db, &acc_fc.id).await? {
@@ -105,39 +137,26 @@ impl Service for SqliteAccountService {
     }
 
     #[tracing::instrument(name = "Getting accounts", skip(self))]
-    async fn read_accounts(&self) -> Result<Vec<Account>, Error> {
+    async fn read_accounts(&self) -> Result<Vec<AccountForDB>, Error> {
         let db = self.pool.db();
 
-        let rows = sqlx::query!(
+        match sqlx::query_as!(
+            AccountForDB,
             r"
                 SELECT *
                 FROM accounts
             "
         )
         .fetch_all(db)
-        .await;
-
-        match rows {
-            Ok(rows) => {
-                info!("Read {} accounts", rows.len());
-                Ok(rows
-                    .into_iter()
-                    .map(|row| Account {
-                        id: row.id,
-                        closed: row.closed,
-                        created: TimeZone::from_utc_datetime(&Utc, &row.created),
-                        description: row.description,
-                        currency: row.currency,
-                        country_code: row.country_code,
-                        owner_type: row.owner_type,
-                        account_number: row.account_number,
-                        sort_code: row.sort_code,
-                    })
-                    .collect())
+        .await
+        {
+            Ok(accounts) => {
+                info!("Read {} accounts", accounts.len());
+                Ok(accounts)
             }
             Err(e) => {
                 error!("Failed to read transactions. Reason: {}", e.to_string());
-                return Err(Error::DbError(e.to_string()));
+                Err(Error::DbError(e.to_string()))
             }
         }
     }
@@ -171,7 +190,7 @@ mod tests {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqliteAccountService::new(pool);
-        let acc = Account::default();
+        let acc = AccountForDB::default();
 
         // Act
         let result = service.save_account(&acc).await;

@@ -1,7 +1,7 @@
 //! Models for the transaction endpoint
 #![allow(dead_code)]
 use async_trait::async_trait;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Deserializer};
 use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
@@ -12,12 +12,13 @@ use super::{
 };
 use crate::error::AppErrors as Error;
 
+/// Represents Transactions in the Monzo API
 #[derive(Deserialize, Debug)]
-pub struct Transactions {
+pub struct TransactionsResponse {
     pub transactions: Vec<TransactionResponse>,
 }
 
-/// Represents a transaction response from the Monzo API
+/// Represents a Transaction in the Monzo API
 #[allow(clippy::module_name_repetitions)]
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct TransactionResponse {
@@ -33,28 +34,13 @@ pub struct TransactionResponse {
     pub notes: Option<String>,
     #[serde(deserialize_with = "deserialize_optional_datetime")]
     pub settled: Option<DateTime<Utc>>,
-    #[serde(deserialize_with = "deserialize_optional_datetime")]
     pub updated: Option<DateTime<Utc>>,
     pub category: String,
-    // pub categories: HashMap<String, i32>,
-    // pub attachments: Option<Vec<Attachment>>,
-    // pub amount_is_pending: bool,
-    // pub dedupe_id: String,
-}
-
-/// Represents an attachment from the Monzo API
-#[derive(Deserialize, Debug)]
-pub struct Attachment {
-    id: String,
-    external_id: String,
-    file_url: String,
-    file_type: String,
-    created: DateTime<Utc>,
 }
 
 /// Represents a transaction from the database
-#[derive(Debug, Default, sqlx::FromRow)]
-pub struct Transaction {
+#[derive(Debug, Default, Clone, sqlx::FromRow)]
+pub struct TransactionForDB {
     pub id: String,
     pub account_id: String,
     pub merchant_id: Option<String>,
@@ -62,15 +48,15 @@ pub struct Transaction {
     pub currency: String,
     pub local_amount: i64,
     pub local_currency: String,
-    pub created: DateTime<Utc>,
+    pub created: NaiveDateTime,
     pub description: Option<String>,
     pub notes: Option<String>,
-    pub settled: Option<DateTime<Utc>>,
-    pub updated: Option<DateTime<Utc>>,
+    pub settled: Option<NaiveDateTime>,
+    pub updated: Option<NaiveDateTime>,
     pub category: String,
 }
 
-impl From<TransactionResponse> for Transaction {
+impl From<TransactionResponse> for TransactionForDB {
     fn from(tx: TransactionResponse) -> Self {
         Self {
             id: tx.id,
@@ -80,11 +66,11 @@ impl From<TransactionResponse> for Transaction {
             currency: tx.currency,
             local_amount: tx.local_amount,
             local_currency: tx.local_currency,
-            created: tx.created,
+            created: tx.created.naive_utc(),
             description: tx.description,
             notes: tx.notes,
-            settled: tx.settled,
-            updated: tx.updated,
+            settled: tx.settled.map(|utc_time| utc_time.naive_utc()),
+            updated: tx.updated.map(|utc_time| utc_time.naive_utc()),
             category: tx.category,
         }
     }
@@ -95,8 +81,13 @@ impl From<TransactionResponse> for Transaction {
 #[async_trait]
 pub trait Service {
     async fn save_transaction(&self, tx_resp: &TransactionResponse) -> Result<(), Error>;
-    async fn read_transactions(&self) -> Result<Vec<Transaction>, Error>;
-    async fn read_transaction(&self, tx_id: &str) -> Result<Transaction, Error>;
+    async fn read_transactions(&self) -> Result<Vec<TransactionForDB>, Error>;
+    async fn read_transactions_for_dates(
+        &self,
+        from: NaiveDateTime,
+        until: NaiveDateTime,
+    ) -> Result<Vec<TransactionForDB>, Error>;
+    async fn read_transaction(&self, tx_id: &str) -> Result<TransactionForDB, Error>;
     async fn delete_all_transactions(&self) -> Result<(), Error>;
 }
 
@@ -124,7 +115,7 @@ impl Service for SqliteTransactionService {
     async fn save_transaction(&self, tx_resp: &TransactionResponse) -> Result<(), Error> {
         let db = self.pool.db();
 
-        let tx = Transaction::from(tx_resp.clone());
+        let tx = TransactionForDB::from((*tx_resp).clone());
 
         if is_duplicate_transaction(db, &tx.id).await? {
             info!("Transaction exists. Skipping");
@@ -188,78 +179,76 @@ impl Service for SqliteTransactionService {
     }
 
     #[tracing::instrument(name = "Read transactions", skip(self))]
-    async fn read_transactions(&self) -> Result<Vec<Transaction>, Error> {
+    async fn read_transactions(&self) -> Result<Vec<TransactionForDB>, Error> {
         let db = self.pool.db();
 
-        // TODO: Figure out why query_as!(Transaction) won't deserialise DateTime<Utc>
-        let rows = sqlx::query!(
+        // TODO: Figure out why query_as!(Transaction) won't deserialise NaiveDateTime
+        match sqlx::query_as!(
+            TransactionForDB,
             r"
                 SELECT *
                 FROM transactions
             "
         )
         .fetch_all(db)
-        .await;
-
-        match rows {
-            Ok(rows) => {
-                info!("Read {} transactions", rows.len());
-                Ok(rows
-                    .into_iter()
-                    .map(|row| Transaction {
-                        id: row.id,
-                        account_id: row.account_id,
-                        merchant_id: row.merchant_id,
-                        amount: row.amount,
-                        currency: row.currency,
-                        local_amount: row.local_amount,
-                        local_currency: row.local_currency,
-                        created: TimeZone::from_utc_datetime(&Utc, &row.created),
-                        description: row.description,
-                        notes: row.notes,
-                        settled: row.settled.map(|s| TimeZone::from_utc_datetime(&Utc, &s)),
-                        updated: row.updated.map(|u| TimeZone::from_utc_datetime(&Utc, &u)),
-                        category: row.category,
-                    })
-                    .collect())
+        .await
+        {
+            Ok(txs) => {
+                info!("Read {} transactions", txs.len());
+                Ok(txs)
             }
             Err(e) => {
-                error!("Failed to read transactions. Reason: {}", e.to_string());
+                error!("Failed to read transaction. Reason: {}", e.to_string());
                 return Err(Error::DbError(e.to_string()));
             }
         }
     }
 
-    #[tracing::instrument(name = "Read transaction", skip(self))]
-    async fn read_transaction(&self, tx_id: &str) -> Result<Transaction, Error> {
+    #[tracing::instrument(name = "Read transactions for dates", skip(self))]
+    async fn read_transactions_for_dates(
+        &self,
+        from: NaiveDateTime,
+        until: NaiveDateTime,
+    ) -> Result<Vec<TransactionForDB>, Error> {
         let db = self.pool.db();
 
-        // TODO: Figure out why query_as!(Transaction) won't deserialise DateTime<Utc>
-        let row = sqlx::query!(
+        let transactions = sqlx::query_as!(
+            TransactionForDB,
             r"
-                SELECT * FROM transactions WHERE id = $1
+                SELECT *
+                FROM transactions
+                WHERE created
+                BETWEEN $1 AND $2
+            ",
+            from,
+            until
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(transactions)
+    }
+
+    #[tracing::instrument(name = "Read transaction", skip(self))]
+    async fn read_transaction(&self, tx_id: &str) -> Result<TransactionForDB, Error> {
+        let db = self.pool.db();
+
+        match sqlx::query_as!(
+            TransactionForDB,
+            r"
+                SELECT *
+                FROM transactions
+                WHERE id = $1
             ",
             tx_id
         )
         .fetch_one(db)
-        .await;
-
-        match row {
-            Ok(tx) => Ok(Transaction {
-                id: tx.id,
-                account_id: tx.account_id,
-                merchant_id: tx.merchant_id,
-                amount: tx.amount,
-                currency: tx.currency,
-                local_amount: tx.local_amount,
-                local_currency: tx.local_currency,
-                created: TimeZone::from_utc_datetime(&Utc, &tx.created),
-                description: tx.description,
-                notes: tx.notes,
-                settled: tx.settled.map(|s| TimeZone::from_utc_datetime(&Utc, &s)),
-                updated: tx.updated.map(|u| TimeZone::from_utc_datetime(&Utc, &u)),
-                category: tx.category,
-            }),
+        .await
+        {
+            Ok(txs) => {
+                info!("Read {:?} transaction", txs);
+                Ok(txs)
+            }
             Err(e) => {
                 error!("Failed to read transaction. Reason: {}", e.to_string());
                 return Err(Error::DbError(e.to_string()));
@@ -344,6 +333,8 @@ async fn insert_merchant(
 
 #[cfg(test)]
 mod tests {
+    use chrono::{TimeZone, Utc};
+
     use super::*;
     use crate::tests::test::test_db;
 

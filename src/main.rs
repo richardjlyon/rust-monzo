@@ -26,13 +26,13 @@ async fn main() -> Result<(), Error> {
             Err(e) => eprintln!("Error: {}", e),
         },
         Commands::Update { all, days } => {
-            let mut before = chrono::Utc::now();
+            let mut before = chrono::Utc::now().naive_utc();
             let mut since =
                 before - chrono::Duration::days(configuration.clone().default_days_to_update);
 
             if *all {
                 since = configuration.clone().start_date;
-                before = chrono::Utc::now();
+                before = chrono::Utc::now().naive_utc();
             } else if let Some(days) = days {
                 since = before - chrono::Duration::days(*days);
             }
