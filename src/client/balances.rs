@@ -20,6 +20,8 @@ impl Monzo {
     }
 }
 
+// -- Tests ---------------------------------------------------------------------
+
 #[cfg(test)]
 mod test {
     use crate::tests::test::get_client;

@@ -54,7 +54,7 @@ pub async fn balances() -> Result<(), Error> {
     println!("--------------------------------------------");
     println!(
         "Total: {:>26}",
-        Money::from_minor(balance_total, iso::GBP).to_string() // FIXME: Use the account currency
+        Money::from_minor(balance_total, iso::GBP).to_string() // TODO: Use the account currency
     );
 
     Ok(())

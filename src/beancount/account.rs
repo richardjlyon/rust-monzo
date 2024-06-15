@@ -26,9 +26,6 @@ pub enum AccountType {
 
 // Implement Display for Account
 impl fmt::Display for Account {
-    // Remove space from the account name
-    // e.g. "Assets:US:Bank of America:Checking" -> "Assets:US:
-
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
