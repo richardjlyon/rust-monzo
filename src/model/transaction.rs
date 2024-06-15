@@ -357,12 +357,38 @@ mod tests {
     async fn read_transactions() {
         // Arrange
         let (pool, _tmp) = test_db().await;
-        println!("->> {:?}", _tmp);
-        _tmp.leak();
+        // println!("->> {:?}", _tmp);
+        // _tmp.leak();
         let service = SqliteTransactionService::new(pool);
 
         // Act
         let txs = service.read_transactions().await.unwrap();
+
+        //Assert
+        assert!(txs.len() == 2);
+    }
+
+    #[tokio::test]
+    #[ignore = "Not implemented"]
+    async fn read_transactions_for_dates() {
+        // Arrange
+        // TODO: Fix dates
+        let (pool, _tmp) = test_db().await;
+        let service = SqliteTransactionService::new(pool);
+        let from = Utc
+            .with_ymd_and_hms(2021, 1, 1, 0, 0, 0)
+            .unwrap()
+            .naive_utc();
+        let until = Utc
+            .with_ymd_and_hms(2021, 1, 31, 23, 59, 59)
+            .unwrap()
+            .naive_utc();
+
+        // Act
+        let txs = service
+            .read_transactions_for_dates(from, until)
+            .await
+            .unwrap();
 
         //Assert
         assert!(txs.len() == 2);
