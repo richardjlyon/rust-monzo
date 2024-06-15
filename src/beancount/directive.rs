@@ -2,17 +2,18 @@
 
 use chrono::NaiveDate;
 
-use super::Account;
+use super::{Account, Transaction as BeanTransaction};
 
 type Comment = String;
 
 /// Represents a Beancount directive
 #[derive(Debug)]
 pub enum Directive {
+    Comment(String),
     Open(NaiveDate, Account, Option<Comment>),
     Close(NaiveDate, Account, Option<Comment>),
+    Transaction(BeanTransaction),
     Balance(NaiveDate, Account),
-    Comment(String),
 }
 
 impl Directive {
@@ -20,6 +21,7 @@ impl Directive {
     pub fn to_formatted_string(&self) -> String {
         let account_width = 40;
         match self {
+            Directive::Comment(comment) => format!("\n* {}\n", comment),
             Directive::Open(date, account, comment) => {
                 let currency = &account.currency;
                 let comment = match comment {
@@ -46,10 +48,12 @@ impl Directive {
                     account.to_string(),
                 )
             }
+            Directive::Transaction(transaction) => {
+                format!("{}\n", transaction.to_formatted_string())
+            }
             Directive::Balance(_date, _account) => {
                 todo!()
             }
-            Directive::Comment(comment) => format!("\n* {}\n", comment),
         }
     }
 }
