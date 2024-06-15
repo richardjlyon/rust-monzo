@@ -38,18 +38,20 @@ impl Monzo {
     }
 }
 
+// -- Tests ---------------------------------------------------------------------
+
 #[cfg(test)]
 mod test {
-    use chrono::{DateTime, NaiveDateTime, Utc};
-    use chrono_intervals::{Grouping, IntervalGenerator};
+    use chrono::NaiveDateTime;
 
     use crate::{
         model::transaction::TransactionResponse,
         tests::{self, test::get_client},
     };
 
+    use crate::date_ranges;
+
     #[tokio::test]
-    #[ignore = "Need to fix datetime handling"]
     async fn transactions_work() {
         let monzo = get_client();
         let pool = tests::test::test_db().await;
@@ -57,29 +59,19 @@ mod test {
         let mut txs: Vec<TransactionResponse> = Vec::new();
         let account_id = "acc_0000AdNaq81vwtbTBedL06";
 
-        let format = "%Y-%m-%d %H:%M:%S";
-        let since_str = "2024-04-01 12:23:-00";
-        let before_str = "2024-05-21 12:23:00";
+        let start =
+            NaiveDateTime::parse_from_str("2024-04-01 12:23:00", "%Y-%m-%d %H:%M:%S").unwrap();
+        let end =
+            NaiveDateTime::parse_from_str("2024-05-21 12:23:00", "%Y-%m-%d %H:%M:%S").unwrap();
 
-        // TODO: reimplement this mess
-        let since = NaiveDateTime::parse_from_str(since_str, format)
-            .expect("Failed to parse date and time");
-        let before = NaiveDateTime::parse_from_str(before_str, format)
-            .expect("Failed to parse date and time");
-
-        let since_utc: DateTime<Utc> = DateTime::from_utc(since, Utc);
-        let before_utc: DateTime<Utc> = DateTime::from_utc(before, Utc);
-
-        let monthly_intervals = IntervalGenerator::new()
-            .with_grouping(Grouping::PerMonth)
-            .get_intervals(since_utc, before_utc);
+        let monthly_intervals = date_ranges(start, end, 30);
 
         println!("->> {:?}", monthly_intervals.clone());
 
         for (since, before) in monthly_intervals.clone() {
             println!("->> {} - {}", since, before);
             let transactions = monzo
-                .transactions(account_id, &since.naive_utc(), &before.naive_utc(), None)
+                .transactions(account_id, &since, &before, None)
                 .await
                 .unwrap();
 

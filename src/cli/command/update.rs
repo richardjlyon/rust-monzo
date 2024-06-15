@@ -7,12 +7,12 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
-use chrono_intervals::{Grouping, IntervalGenerator};
 use rusty_money::{iso, Money};
 use tracing_log::log::{error, info};
 
 use crate::{
     client::Monzo,
+    date_ranges,
     error::AppErrors as Error,
     model::{
         account::{AccountForDB, Service as AccountService, SqliteAccountService},
@@ -34,8 +34,8 @@ use crate::{
 /// Will return errors if the transactions cannot be fetched or persisted.
 pub async fn update(
     connection_pool: DatabasePool,
-    since: &NaiveDateTime,
-    before: &NaiveDateTime,
+    since: NaiveDateTime,
+    before: NaiveDateTime,
 ) -> Result<(), Error> {
     let (accounts, account_names) = get_accounts(connection_pool.clone()).await?;
     persist_accounts(connection_pool.clone(), &accounts).await?;
@@ -87,23 +87,20 @@ async fn get_pots(
 #[tracing::instrument(name = "get sorted transactions")]
 async fn get_sorted_transactions(
     accounts: &Vec<AccountForDB>,
-    since: &NaiveDateTime,
-    before: &NaiveDateTime,
+    since: NaiveDateTime,
+    before: NaiveDateTime,
 ) -> Result<Vec<TransactionResponse>, Error> {
     let monzo = Monzo::new()?;
     let mut txs_resp: Vec<TransactionResponse> = Vec::new();
 
-    // TODO: Replace this crate with a custom implementation
-    let since_utc: DateTime<Utc> = DateTime::from_utc(*since, Utc);
-    let before_utc: DateTime<Utc> = DateTime::from_utc(*before, Utc);
-    let monthly_intervals = IntervalGenerator::new()
-        .with_grouping(Grouping::PerMonth)
-        .get_intervals(since_utc, before_utc);
+    const DAYS: i64 = 30;
+
+    let date_ranges = date_ranges(since, before, DAYS);
 
     for account in accounts {
-        for (since, before) in monthly_intervals.clone() {
+        for (since, before) in date_ranges.clone() {
             let transactions = monzo
-                .transactions(&account.id, &since.naive_utc(), &before.naive_utc(), None)
+                .transactions(&account.id, &since, &before, None)
                 .await?;
 
             info!("Fetched {} transactions", &transactions.len());

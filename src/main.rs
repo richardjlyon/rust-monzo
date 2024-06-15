@@ -26,20 +26,25 @@ async fn main() -> Result<(), Error> {
             Err(e) => eprintln!("Error: {}", e),
         },
         Commands::Update { all, days } => {
-            let mut before = chrono::Utc::now().naive_utc();
-            let mut since =
-                before - chrono::Duration::days(configuration.clone().default_days_to_update);
+            let end_date;
+            let start_date;
+            let config_start_date = configuration.start_date;
+            let config_days_to_update = configuration.default_days_to_update;
 
             if *all {
-                since = configuration.clone().start_date;
-                before = chrono::Utc::now().naive_utc();
+                end_date = chrono::Utc::now().naive_utc();
+                start_date = config_start_date;
             } else if let Some(days) = days {
-                since = before - chrono::Duration::days(*days);
+                end_date = chrono::Utc::now().naive_utc();
+                start_date = end_date - chrono::Duration::days(*days);
+            } else {
+                end_date = chrono::Utc::now().naive_utc();
+                start_date = end_date - chrono::Duration::days(config_days_to_update);
             }
 
-            match command::update(pool, &since, &before).await {
-                Ok(_) => {}
-                Err(e) => eprintln!("Error: {}", e),
+            match command::update(pool, start_date, end_date).await {
+                Ok(_) => return Ok(()),
+                Err(e) => return Err(Error::Error(e.to_string())),
             }
         }
         Commands::Bean {} => match command::beancount(pool).await {
