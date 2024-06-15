@@ -42,12 +42,26 @@ pub struct AccessTokens {
 /// # Errors
 /// Will return errors if the config can't be read or deserialised.
 pub fn get_config() -> Result<Settings, Error> {
-    // Initialise our configuration reader
-    let settings = config::Config::builder()
+    // TODO: Improve error messages
+    let settings = match config::Config::builder()
         .add_source(config::File::new(
             "configuration.toml",
             config::FileFormat::Toml,
         ))
-        .build()?;
-    Ok(settings.try_deserialize::<Settings>()?)
+        .build()
+    {
+        Ok(s) => s,
+        Err(e) => {
+            println!("->> Failed to build config: {}", e.to_string());
+            return Err(Error::ConfigurationError(e));
+        }
+    };
+
+    match settings.try_deserialize::<Settings>() {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            println!("->> Failed to deserialise config: {}", e.to_string());
+            Err(Error::ConfigurationError(e))
+        }
+    }
 }

@@ -47,7 +47,7 @@ pub mod test {
     pub fn get_client() -> Monzo {
         match Monzo::new() {
             Ok(client) => client,
-            Err(_) => panic!("Error creating client"),
+            Err(e) => panic!("Error creating client: {e}"),
         }
     }
 }

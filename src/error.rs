@@ -27,8 +27,8 @@ pub enum AppErrors {
     AuthorisationFailure(#[from] ErrorJson),
 
     // -- Server error
-    #[error("Handler error")]
-    HandlerError,
+    #[error("Handler error: {0}")]
+    HandlerError(String),
 
     #[error("Reqwest error: {0}")]
     ReqwestError(String),

@@ -66,9 +66,9 @@ impl Monzo {
             let result = match serde_path_to_error::deserialize(jd) {
                 Ok(result) => result,
                 Err(e) => {
-                    error!("unable to parse response: {:?}", e);
-                    info!("Response content: {}", j);
-                    return Err(Error::HandlerError);
+                    error!("unable to parse response: {}", e);
+                    println!("->> Response content: {}", j);
+                    return Err(Error::HandlerError(e.to_string()));
                 }
             };
             Ok(result)
@@ -77,7 +77,7 @@ impl Monzo {
             // TODO: Implement error handling for Monzo API
             let j = response.text().await?;
             error!("Response error: {:?}", j);
-            Err(Error::HandlerError)
+            Err(Error::HandlerError(j.to_string()))
         }
     }
 }
