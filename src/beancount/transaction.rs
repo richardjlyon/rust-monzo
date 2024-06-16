@@ -39,6 +39,7 @@ impl Transaction {
     #[must_use]
     pub fn to_formatted_string(&self) -> String {
         let comment = match &self.comment {
+            Some(s) if s.is_empty() => String::new(),
             Some(d) => format!("; {}\n", d),
             None => String::new(),
         };

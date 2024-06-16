@@ -116,14 +116,16 @@ fn prepare_transaction(tx: &BeancountTransaction, postings: &Postings) -> Transa
 }
 
 fn prepare_transaction_comment(tx: &BeancountTransaction) -> Option<String> {
-    Some(tx.notes.clone().unwrap())
+    let amount = prepare_amount(tx);
+    let notes = tx.notes.clone().unwrap();
+
+    Some(format!("{notes} {amount}"))
 }
 
 fn prepare_transaction_notes(tx: &BeancountTransaction) -> String {
     let merchant_name = tx.merchant_name.clone().unwrap_or(String::new());
-    let amount = prepare_amount(tx);
 
-    format!("{}{}", merchant_name, amount)
+    format!("{}", merchant_name)
 }
 
 fn prepare_amount(tx: &BeancountTransaction) -> String {
@@ -131,9 +133,9 @@ fn prepare_amount(tx: &BeancountTransaction) -> String {
         String::new()
     } else {
         if let Some(iso_code) = iso::find(&tx.local_currency) {
-            format!(" {}", Money::from_minor(tx.local_amount, iso_code))
+            format!("{}", Money::from_minor(tx.local_amount, iso_code))
         } else {
-            format!(" {} {}", tx.local_amount, tx.local_currency)
+            format!("{} {}", tx.local_amount, tx.local_currency)
         }
     }
 }
