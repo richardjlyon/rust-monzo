@@ -41,7 +41,7 @@ CREATE TABLE transactions (
     local_amount INTEGER NOT NULL,
     local_currency TEXT NOT NULL,
     created DATETIME NOT NULL,
-    description TEXT,
+    description TEXT NOT NULL,
     notes TEXT,
     settled DATETIME,
     updated DATETIME,

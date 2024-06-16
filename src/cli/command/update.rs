@@ -139,13 +139,7 @@ fn print_transactions(
         let date_fmt = format_date(&tx.created);
 
         let account_name_fmt = format_account_name(account_names, &tx.account_id);
-
-        let description = match &tx.description {
-            Some(d) => d,
-            None => "",
-        };
-        let pot_fmt = format_pot(pot_names, description);
-
+        let pot_fmt = format_pot(pot_names, &tx.description);
         let amount = amount_with_currency(tx.amount, &tx.currency)?;
         let credit_fmt = format_credit(tx.amount, &amount);
         let debit_fmt = format_debit(tx.amount, &amount);
@@ -159,7 +153,7 @@ fn print_transactions(
             None => "",
         };
 
-        let description_fmt = format_description(notes, description, pot_names);
+        let description_fmt = format_description(notes, &tx.description, pot_names);
 
         println!(
             "{date_fmt:<11} {account_name_fmt:<8} {pot_fmt:<25} {credit_fmt:>12} {debit_fmt:>12} {local_amount_fmt:>12} {merchant_fmt:>30}  {description_fmt:<30} ",
