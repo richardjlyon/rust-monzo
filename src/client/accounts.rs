@@ -4,8 +4,10 @@
 
 use std::collections::HashMap;
 
+use tracing_log::log::info;
+
 use crate::error::AppErrors as Error;
-use crate::model::account::{Account, Accounts};
+use crate::model::account::{AccountResponse, Accounts};
 
 use super::Monzo;
 
@@ -14,8 +16,10 @@ impl Monzo {
     ///
     /// # Errors
     /// Will return errors if authentication fails or the Monzo API cannot be reached.
-    pub async fn accounts(&self) -> Result<Vec<Account>, Error> {
+    #[tracing::instrument(name = "Get accounts", skip(self))]
+    pub async fn accounts(&self) -> Result<Vec<AccountResponse>, Error> {
         let url = format!("{}accounts", self.base_url);
+        info!("url: {}", url);
         let response = self.client.get(&url).send().await?;
         let accounts: Accounts = Self::handle_response(response).await?;
 
@@ -36,14 +40,17 @@ impl Monzo {
     }
 }
 
+// -- Tests ---------------------------------------------------------------------
+
 #[cfg(test)]
 mod test {
-    use crate::tests::test::get_client;
+    use crate::tests::{self, test::get_client};
 
     #[tokio::test]
     // #[ignore]
     async fn accounts_work() {
         // Arrange
+        let db = tests::test::test_db().await;
         let monzo = get_client();
         // Act
         let accounts = monzo.accounts().await.unwrap();

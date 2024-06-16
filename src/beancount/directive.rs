@@ -2,7 +2,7 @@
 
 use chrono::NaiveDate;
 
-use super::{Account, Transaction as BeanTransaction};
+use super::{AssetAccount, Transaction as BeanTransaction};
 
 type Comment = String;
 
@@ -10,10 +10,10 @@ type Comment = String;
 #[derive(Debug)]
 pub enum Directive {
     Comment(String),
-    Open(NaiveDate, Account, Option<Comment>),
-    Close(NaiveDate, Account, Option<Comment>),
+    Open(NaiveDate, AssetAccount, Option<Comment>),
+    Close(NaiveDate, AssetAccount, Option<Comment>),
     Transaction(BeanTransaction),
-    Balance(NaiveDate, Account),
+    Balance(NaiveDate, AssetAccount),
 }
 
 impl Directive {
@@ -70,7 +70,7 @@ mod tests {
     fn open_directive() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = Account {
+        let account = AssetAccount {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
             provider: "Monzo".to_string(),
@@ -89,7 +89,7 @@ mod tests {
     fn open_directive_comment() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = Account {
+        let account = AssetAccount {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
             provider: "Monzo".to_string(),
@@ -109,7 +109,7 @@ mod tests {
     fn close_directive() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = Account {
+        let account = AssetAccount {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
             provider: "Monzo".to_string(),
@@ -128,7 +128,7 @@ mod tests {
     fn close_directive_comment() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = Account {
+        let account = AssetAccount {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
             provider: "Monzo".to_string(),

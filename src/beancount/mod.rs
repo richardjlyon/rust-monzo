@@ -14,18 +14,18 @@ mod account;
 mod directive;
 mod transaction;
 
-pub use account::{Account, AccountType};
+pub use account::{AccountType, AssetAccount, LiabilityAccount};
 pub use directive::Directive;
-pub use transaction::{Posting, Postings, Transaction};
+pub use transaction::{AssetPosting, LiabilityPosting, Postings, Transaction};
 
 /// A struct representing a Beancount configuration file on disk
 #[derive(Debug, Deserialize)]
 pub struct BeanSettings {
     pub beancount_filepath: PathBuf,
     pub start_date: NaiveDate,
-    pub assets: Option<Vec<Account>>,
-    pub liabilities: Option<Vec<Account>>,
-    pub equities: Option<Vec<Account>>,
+    pub assets: Option<Vec<AssetAccount>>,
+    pub liabilities: Option<Vec<AssetAccount>>,
+    pub equities: Option<Vec<AssetAccount>>,
 }
 
 /// A struct representing a Beancount file

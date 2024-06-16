@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Deserializer};
-use sqlx::{Pool, Sqlite};
+use sqlx::{FromRow, Pool, Sqlite};
 use tracing_log::log::{error, info};
 
 use super::{
@@ -76,6 +76,23 @@ impl From<TransactionResponse> for TransactionForDB {
     }
 }
 
+/// A structure for holding Beancount Transaction data
+#[derive(FromRow, Debug, Clone)]
+pub struct BeancountTransaction {
+    pub id: String,
+    pub created: NaiveDateTime,
+    pub settled: Option<NaiveDateTime>,
+    pub account_name: String,
+    pub amount: i64,
+    pub currency: String,
+    pub local_amount: i64,
+    pub local_currency: String,
+    pub description: Option<String>,
+    pub notes: Option<String>,
+    pub category: String,
+    pub merchant_name: Option<String>,
+}
+
 // -- Services -------------------------------------------------------------------------
 
 #[async_trait]
@@ -89,6 +106,11 @@ pub trait Service {
     ) -> Result<Vec<TransactionForDB>, Error>;
     async fn read_transaction(&self, tx_id: &str) -> Result<TransactionForDB, Error>;
     async fn delete_all_transactions(&self) -> Result<(), Error>;
+    async fn read_beancount_data(
+        &self,
+        from: NaiveDateTime,
+        until: NaiveDateTime,
+    ) -> Result<Vec<BeancountTransaction>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -270,6 +292,48 @@ impl Service for SqliteTransactionService {
                 Err(Error::DbError(e.to_string()))
             }
         }
+    }
+
+    /// Read data anf format for processing in the beancouint module
+    #[tracing::instrument(name = "Read beancount data", skip(self))]
+    async fn read_beancount_data(
+        &self,
+        from: NaiveDateTime,
+        until: NaiveDateTime,
+    ) -> Result<Vec<BeancountTransaction>, Error> {
+        let db = self.pool.db();
+
+        let transactions = sqlx::query_as!(
+            BeancountTransaction,
+            r"
+                SELECT
+                    t.id,
+                    t.created,
+                    t.settled,
+                    a.owner_type AS account_name,
+                    t.amount,
+                    a.currency,
+                    t.local_amount,
+                    t.local_currency,
+                    t.description,
+                    t.notes,
+                    t.category,
+                    m.name AS merchant_name
+
+                FROM transactions t
+                JOIN accounts a ON t.account_id = a.id
+                LEFT JOIN merchants m ON t.merchant_id = m.id
+                WHERE t.created
+                BETWEEN $1 AND $2
+
+            ",
+            from,
+            until
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(transactions)
     }
 }
 

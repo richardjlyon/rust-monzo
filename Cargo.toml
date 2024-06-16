@@ -45,4 +45,4 @@ serde_path_to_error = "0.1.16"
 strum = { version = "0.26.2", features = ["derive"] }
 strum_macros = "0.26.4"
 toml = "0.8.14"
-capitalize = "0.3.4"
+convert_case = "0.6.0"

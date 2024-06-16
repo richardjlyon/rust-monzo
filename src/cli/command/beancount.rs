@@ -1,10 +1,12 @@
 //! Beancount
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
+use rusty_money::{iso, Money};
 
 use crate::{
     beancount::{
-        Account as BeanAccount, AccountType, Beancount, Directive, Posting, Postings, Transaction,
+        AccountType, AssetAccount, AssetPosting, Beancount, Directive, LiabilityAccount,
+        LiabilityPosting, Postings, Transaction,
     },
     date_ranges,
     error::AppErrors as Error,
@@ -37,57 +39,61 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     directives.push(Directive::Comment("transactions".to_string()));
 
     let service = SqliteTransactionService::new(pool);
-    let start = NaiveDateTime::parse_from_str("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
-    let end = NaiveDateTime::parse_from_str("2024-01-31 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap();
+    let start = NaiveDateTime::parse_from_str("2024-04-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
+    let end = NaiveDateTime::parse_from_str("2024-04-30 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap();
     let date_ranges = date_ranges(start, end, 30);
 
     for (since, before) in date_ranges {
-        let transactions = service.read_transactions_for_dates(since, before).await?;
-        for tx in transactions {
-            let from_amount = 0.0;
-            let from_currency = "".to_string();
-            let from_description = "".to_string();
-
-            let to_amount = 0.0;
-            let to_currency = "".to_string();
+        let beancount_data = service.read_beancount_data(since, before).await?;
+        println!("->> {:#?}", beancount_data);
+        for tx in beancount_data {
             let to_description = "".to_string();
 
-            let from_account = BeanAccount {
-                account_type: AccountType::Assets,
-                currency: "XXX".to_string(),
-                provider: "Monzo".to_string(),
-                name: "XXX".to_string(),
+            let liability_account = LiabilityAccount {
+                account_type: AccountType::Liabilities,
+                currency: tx.local_currency.clone(),
+                category: tx.category,
             };
 
-            let to_account = BeanAccount {
-                account_type: AccountType::Assets,
-                currency: "XXX".to_string(),
-                provider: "Monzo".to_string(),
-                name: "XXX".to_string(),
-            };
-
-            let from_posting = Posting {
-                account: from_account,
-                amount: from_amount,
-                currency: from_currency,
-                description: from_description,
-            };
-
-            let to_posting = Posting {
-                account: to_account,
-                amount: to_amount,
-                currency: to_currency,
+            let liability_posting = LiabilityPosting {
+                account: liability_account,
+                amount: -tx.amount as f64,
+                currency: tx.currency.to_string(),
                 description: to_description,
             };
 
-            let postings = Postings {
-                from: from_posting,
-                to: to_posting,
+            let asset_account = AssetAccount {
+                account_type: AccountType::Assets,
+                currency: tx.currency.to_string(),
+                provider: "Monzo".to_string(),
+                name: tx.account_name.to_string(),
             };
 
+            let asset_posting = AssetPosting {
+                account: asset_account,
+                amount: tx.amount as f64,
+                currency: tx.currency.clone(),
+            };
+
+            let postings = Postings {
+                liability_posting,
+                asset_posting,
+            };
+
+            let comment = Some(tx.notes.clone().unwrap());
+            let date = tx.settled.unwrap_or(tx.created).date();
+
+            let notes = format_note(
+                &tx.merchant_name,
+                &tx.currency,
+                &tx.local_currency,
+                &tx.local_amount,
+            );
+
             let transaction = Transaction {
-                date: Utc::now().date_naive(),
-                description: "XXX".to_string(),
+                comment,
+                date,
+                notes,
                 postings,
             };
 
@@ -102,6 +108,29 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     Ok(())
 }
 
+fn format_note(
+    merchant_name: &Option<String>,
+    currency: &str,
+    local_currency: &str,
+    local_amount: &i64,
+) -> String {
+    // formant merchant name
+    let merchant = merchant_name.clone().unwrap_or(String::new());
+
+    // format currency
+    let currency = if currency == local_currency {
+        String::new()
+    } else {
+        if let Some(iso_code) = iso::find(local_currency) {
+            format!(" {}", Money::from_minor(*local_amount, iso_code))
+        } else {
+            format!(" {} {}", local_amount, local_currency)
+        }
+    };
+
+    format!("{}{}", merchant, currency)
+}
+
 async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let open_date = bc.settings.start_date;
@@ -110,7 +139,7 @@ async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let accounts = acc_service.read_accounts().await?;
 
     for account in accounts {
-        let beanaccount = BeanAccount {
+        let beanaccount = AssetAccount {
             account_type: AccountType::Assets,
             currency: account.currency,
             provider: "Monzo".to_string(),
@@ -129,7 +158,7 @@ async fn monzo_pots(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let mut directives: Vec<Directive> = Vec::new();
     let pots = pot_service.read_pots().await?;
     for pot in pots {
-        let beanaccount = BeanAccount {
+        let beanaccount = AssetAccount {
             account_type: AccountType::Assets,
             currency: pot.currency,
             provider: "Monzo".to_string(),
@@ -151,7 +180,7 @@ fn config_assets() -> Result<Vec<Directive>, Error> {
     }
 
     for account in bc.settings.assets.unwrap() {
-        let beanaccount = BeanAccount {
+        let beanaccount = AssetAccount {
             name: account.name,
             account_type: AccountType::Assets,
             currency: account.currency,
@@ -173,7 +202,7 @@ fn config_liabilities() -> Result<Vec<Directive>, Error> {
     }
 
     for account in bc.settings.liabilities.unwrap() {
-        let beanaccount = BeanAccount {
+        let beanaccount = AssetAccount {
             name: account.name,
             account_type: AccountType::Liabilities,
             currency: account.currency,
@@ -195,7 +224,7 @@ fn config_equities() -> Result<Vec<Directive>, Error> {
     }
 
     for account in bc.settings.equities.unwrap() {
-        let beanaccount = BeanAccount {
+        let beanaccount = AssetAccount {
             name: account.name,
             account_type: AccountType::Equities,
             currency: account.currency,

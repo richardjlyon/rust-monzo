@@ -49,3 +49,10 @@ Types of Accounts:
 - Income Statement - A balance that is meaningful over a period of time.
   - Income (-ve) Something received
   - Expenses (+ve) Something given away
+
+## Transaction format
+
+;[created] _ [note]
+[settled] _ [description] or [merchant] or [local amount/currency]
+[AccountType::Liabilities][local_currency][category] [amount] [currency]
+[AccountType::Assets][currency][institution][account.owner_type] [amount] [currency]
