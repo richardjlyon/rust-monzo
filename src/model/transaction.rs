@@ -53,7 +53,7 @@ pub struct TransactionForDB {
     pub notes: Option<String>,
     pub settled: Option<NaiveDateTime>,
     pub updated: Option<NaiveDateTime>,
-    pub category: String,
+    pub category_id: String,
 }
 
 impl From<TransactionResponse> for TransactionForDB {
@@ -71,7 +71,7 @@ impl From<TransactionResponse> for TransactionForDB {
             notes: tx.notes,
             settled: tx.settled.map(|utc_time| utc_time.naive_utc()),
             updated: tx.updated.map(|utc_time| utc_time.naive_utc()),
-            category: tx.category,
+            category_id: tx.category,
         }
     }
 }
@@ -89,7 +89,7 @@ pub struct BeancountTransaction {
     pub local_currency: String,
     pub description: Option<String>,
     pub notes: Option<String>,
-    pub category: String,
+    pub category_id: String,
     pub merchant_name: Option<String>,
 }
 
@@ -162,7 +162,7 @@ impl Service for SqliteTransactionService {
                     notes,
                     settled,
                     updated,
-                    category
+                    category_id
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ",
@@ -178,7 +178,7 @@ impl Service for SqliteTransactionService {
             tx.notes,
             tx.settled,
             tx.updated,
-            tx.category,
+            tx.category_id,
         )
         .execute(db)
         .await
@@ -317,7 +317,7 @@ impl Service for SqliteTransactionService {
                     t.local_currency,
                     t.description,
                     t.notes,
-                    t.category,
+                    t.category_id,
                     m.name AS merchant_name
 
                 FROM transactions t

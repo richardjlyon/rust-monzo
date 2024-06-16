@@ -51,7 +51,7 @@ impl SqlitePotService {
 #[async_trait]
 impl Service for SqlitePotService {
     #[tracing::instrument(
-        name = "Create pot",
+        name = "Save pot",
         skip(self, pot_fc),
         fields(tx_id = %pot_fc.id, merchant_id = %pot_fc.id)
     )]

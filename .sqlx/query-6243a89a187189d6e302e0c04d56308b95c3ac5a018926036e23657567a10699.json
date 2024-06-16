@@ -64,7 +64,7 @@
         "type_info": "Datetime"
       },
       {
-        "name": "category",
+        "name": "category_id",
         "ordinal": 12,
         "type_info": "Text"
       }

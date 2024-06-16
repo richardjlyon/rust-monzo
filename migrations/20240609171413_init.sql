@@ -21,6 +21,17 @@ CREATE TABLE pots (
     pot_type TEXT NOT NULL
 );
 
+CREATE TABLE merchants (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL
+);
+
+CREATE TABLE categories (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL
+);
+
 CREATE TABLE transactions (
     id TEXT PRIMARY KEY NOT NULL,
     account_id TEXT NOT NULL,
@@ -34,14 +45,9 @@ CREATE TABLE transactions (
     notes TEXT,
     settled DATETIME,
     updated DATETIME,
-    category TEXT NOT NULL,
+    category_id TEXT NOT NULL,
 
     FOREIGN KEY(account_id) REFERENCES accounts(id),
-    FOREIGN KEY(merchant_id) REFERENCES merchants(id)
-);
-
-CREATE TABLE merchants (
-    id TEXT PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    category TEXT NOT NULL
+    FOREIGN KEY(merchant_id) REFERENCES merchants(id),
+    FOREIGN KEY(category_id) REFERENCES categories(id)
 );

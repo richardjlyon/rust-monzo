@@ -1,4 +1,5 @@
 use account::AccountForDB;
+use category::Category;
 use chrono::Utc;
 use pot::Pot;
 use sqlx::{
@@ -12,6 +13,7 @@ use crate::error::AppErrors as Error;
 
 pub mod account;
 pub mod balance;
+pub mod category;
 pub mod merchant;
 pub mod pot;
 pub mod transaction;
@@ -107,20 +109,38 @@ impl DatabasePool {
         .execute(db)
         .await?;
 
+        let category = Category {
+            id: "category_1_id".to_string(),
+            name: "category_1".to_string(),
+        };
+
+        sqlx::query!(
+            r#"
+            INSERT INTO categories (id, name)
+            VALUES (?1, ?2)
+            "#,
+            category.id,
+            category.name,
+        )
+        .execute(db)
+        .await?;
+
         // insert transactions
 
         let mut tx1 = TransactionForDB::default();
         tx1.id = "1".to_string();
         tx1.account_id = account.id.clone();
+        tx1.category_id = category.id.clone();
 
         let mut tx2 = TransactionForDB::default();
         tx2.id = "2".to_string();
         tx2.account_id = account.id.clone();
+        tx2.category_id = category.id.clone();
 
         for tx in vec![tx1, tx2] {
             sqlx::query!(
                 r#"
-                INSERT INTO transactions (id, account_id, amount, local_amount, currency, local_currency, description, created, category)
+                INSERT INTO transactions (id, account_id, amount, local_amount, currency, local_currency, description, created, category_id)
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
                 "#,
                 tx.id,
@@ -131,7 +151,7 @@ impl DatabasePool {
                 tx.local_currency,
                 tx.description,
                 tx.created,
-                tx.category,
+                tx.category_id,
             )
             .execute(db)
             .await?;

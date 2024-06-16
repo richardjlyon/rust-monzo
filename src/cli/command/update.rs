@@ -11,11 +11,14 @@ use rusty_money::{iso, Money};
 use tracing_log::log::{error, info};
 
 use crate::{
+    beancount::Beancount,
     client::Monzo,
+    configuration::get_config,
     date_ranges,
     error::AppErrors as Error,
     model::{
         account::{AccountForDB, Service as AccountService, SqliteAccountService},
+        category::SqliteCategoryService,
         merchant::Merchant,
         pot::{Pot, Service, SqlitePotService},
         transaction::{
@@ -44,9 +47,10 @@ pub async fn update(
     persist_pots(connection_pool.clone(), &pots).await?;
 
     let txs_resp = get_sorted_transactions(&accounts, since, before).await?;
-    persist_transactions(connection_pool.clone(), &txs_resp).await?;
+    persist_categories(connection_pool.clone(), &txs_resp).await?;
+    // persist_transactions(connection_pool.clone(), &txs_resp).await?;
 
-    print_transactions(&txs_resp, &account_names, &pot_names)?;
+    // print_transactions(&txs_resp, &account_names, &pot_names)?;
 
     Ok(())
 }
@@ -166,7 +170,6 @@ fn print_transactions(
     Ok(())
 }
 
-// Persist the accounts to the database
 async fn persist_accounts(
     connection_pool: DatabasePool,
     accounts: &Vec<AccountForDB>,
@@ -186,7 +189,6 @@ async fn persist_accounts(
     Ok(())
 }
 
-// Persist the pots to the database
 async fn persist_pots(connection_pool: DatabasePool, pots: &Vec<Pot>) -> Result<(), Error> {
     let pot_service = SqlitePotService::new(connection_pool.clone());
     for pot in pots {
@@ -203,7 +205,34 @@ async fn persist_pots(connection_pool: DatabasePool, pots: &Vec<Pot>) -> Result<
     Ok(())
 }
 
-// Persist the transactions to the database
+async fn persist_categories(
+    connection_pool: DatabasePool,
+    transactions: &[TransactionResponse],
+) -> Result<(), Error> {
+    let category_service = SqliteCategoryService::new(connection_pool.clone());
+
+    let bc = Beancount::from_config()?;
+    let custom_categories = bc.settings.custom_categories;
+
+    println!("{:#?}", custom_categories.as_ref().unwrap());
+
+    for tx_resp in transactions {
+        let category = tx_resp.category.clone();
+        let category_id = get_category_name(&custom_categories, &category);
+
+        println!("{} -> {}", category, category_id);
+    }
+
+    Ok(())
+}
+
+fn get_category_name(opt_map: &Option<HashMap<String, String>>, key: &str) -> String {
+    opt_map
+        .as_ref()
+        .and_then(|map| map.get(key).cloned())
+        .unwrap_or(key.to_string())
+}
+
 async fn persist_transactions(
     connection_pool: DatabasePool,
     transactions: &[TransactionResponse],

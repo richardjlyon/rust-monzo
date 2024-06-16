@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT\n                    t.id,\n                    t.created,\n                    t.settled,\n                    a.owner_type AS account_name,\n                    t.amount,\n                    a.currency,\n                    t.local_amount,\n                    t.local_currency,\n                    t.description,\n                    t.notes,\n                    t.category_id,\n                    m.name AS merchant_name\n\n                FROM transactions t\n                JOIN accounts a ON t.account_id = a.id\n                LEFT JOIN merchants m ON t.merchant_id = m.id\n                WHERE t.created\n                BETWEEN $1 AND $2\n\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "created",
+        "ordinal": 1,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "settled",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "account_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "amount",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "currency",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "local_amount",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "local_currency",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "notes",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_id",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "merchant_name",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "7f27c10b991564a5e768e881fe7e39ef347f97aa8c93c14803cded0a3bf84b56"
+}

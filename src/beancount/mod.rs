@@ -6,7 +6,7 @@
 use chrono::NaiveDate;
 
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::error::AppErrors as Error;
 
@@ -18,19 +18,20 @@ pub use account::{AccountType, AssetAccount, LiabilityAccount};
 pub use directive::Directive;
 pub use transaction::{AssetPosting, LiabilityPosting, Postings, Transaction};
 
+/// A struct representing a Beancount file
+pub struct Beancount {
+    pub settings: BeanSettings,
+}
+
 /// A struct representing a Beancount configuration file on disk
 #[derive(Debug, Deserialize)]
 pub struct BeanSettings {
     pub beancount_filepath: PathBuf,
     pub start_date: NaiveDate,
+    pub custom_categories: Option<HashMap<String, String>>,
     pub assets: Option<Vec<AssetAccount>>,
     pub liabilities: Option<Vec<AssetAccount>>,
     pub equities: Option<Vec<AssetAccount>>,
-}
-
-/// A struct representing a Beancount file
-pub struct Beancount {
-    pub settings: BeanSettings,
 }
 
 impl Beancount {
