@@ -13,7 +13,7 @@ use crate::{
     model::{
         account::{Service as AccountService, SqliteAccountService},
         pot::{Service as PotService, SqlitePotService},
-        transaction::{Service, SqliteTransactionService},
+        transaction::{BeancountTransaction, Service, SqliteTransactionService},
         DatabasePool,
     },
 };
@@ -43,63 +43,27 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     let end = NaiveDateTime::parse_from_str("2024-04-30 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap();
     let date_ranges = date_ranges(start, end, 30);
 
+    // First pass: Get all transactions
     for (since, before) in date_ranges {
-        let beancount_data = service.read_beancount_data(since, before).await?;
-        println!("->> {:#?}", beancount_data);
-        for tx in beancount_data {
-            let to_description = "".to_string();
+        let transactions = service.read_beancount_data(since, before).await?;
 
-            let liability_account = LiabilityAccount {
-                account_type: AccountType::Liabilities,
-                currency: tx.local_currency.clone(),
-                category: tx.category,
-            };
-
-            let liability_posting = LiabilityPosting {
-                account: liability_account,
-                amount: -tx.amount as f64,
-                currency: tx.currency.to_string(),
-                description: to_description,
-            };
-
-            let asset_account = AssetAccount {
-                account_type: AccountType::Assets,
-                currency: tx.currency.to_string(),
-                provider: "Monzo".to_string(),
-                name: tx.account_name.to_string(),
-            };
-
-            let asset_posting = AssetPosting {
-                account: asset_account,
-                amount: tx.amount as f64,
-                currency: tx.currency.clone(),
-            };
+        for tx in transactions {
+            let liability_posting = prepare_liability_posting(&tx);
+            let asset_posting = prepare_asset_posting(&tx);
 
             let postings = Postings {
                 liability_posting,
                 asset_posting,
             };
 
-            let comment = Some(tx.notes.clone().unwrap());
-            let date = tx.settled.unwrap_or(tx.created).date();
-
-            let notes = format_note(
-                &tx.merchant_name,
-                &tx.currency,
-                &tx.local_currency,
-                &tx.local_amount,
-            );
-
-            let transaction = Transaction {
-                comment,
-                date,
-                notes,
-                postings,
-            };
+            let transaction = prepare_transaction(&tx, &postings);
 
             directives.push(Directive::Transaction(transaction));
         }
     }
+
+    // Second pass: Process transactions to combine transfers
+    // TODO: Combine transfers
 
     for d in directives {
         println!("{}", d.to_formatted_string());
@@ -108,27 +72,70 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     Ok(())
 }
 
-fn format_note(
-    merchant_name: &Option<String>,
-    currency: &str,
-    local_currency: &str,
-    local_amount: &i64,
-) -> String {
-    // formant merchant name
-    let merchant = merchant_name.clone().unwrap_or(String::new());
-
-    // format currency
-    let currency = if currency == local_currency {
-        String::new()
-    } else {
-        if let Some(iso_code) = iso::find(local_currency) {
-            format!(" {}", Money::from_minor(*local_amount, iso_code))
-        } else {
-            format!(" {} {}", local_amount, local_currency)
-        }
+fn prepare_liability_posting(tx: &BeancountTransaction) -> LiabilityPosting {
+    let liability_account = LiabilityAccount {
+        account_type: AccountType::Liabilities,
+        currency: tx.local_currency.clone(),
+        category: tx.category.clone(),
     };
 
-    format!("{}{}", merchant, currency)
+    LiabilityPosting {
+        account: liability_account,
+        amount: -tx.amount as f64,
+        currency: tx.currency.to_string(),
+        description: String::new(),
+    }
+}
+
+fn prepare_asset_posting(tx: &BeancountTransaction) -> AssetPosting {
+    let asset_account = AssetAccount {
+        account_type: AccountType::Assets,
+        currency: tx.currency.to_string(),
+        provider: "Monzo".to_string(),
+        name: tx.account_name.to_string(),
+    };
+
+    AssetPosting {
+        account: asset_account,
+        amount: tx.amount as f64,
+        currency: tx.currency.clone(),
+    }
+}
+
+fn prepare_transaction(tx: &BeancountTransaction, postings: &Postings) -> Transaction {
+    let comment = prepare_transaction_comment(tx);
+    let date = tx.settled.unwrap_or(tx.created).date();
+    let notes = prepare_transaction_notes(tx);
+
+    Transaction {
+        comment,
+        date,
+        notes,
+        postings: postings.clone(),
+    }
+}
+
+fn prepare_transaction_comment(tx: &BeancountTransaction) -> Option<String> {
+    Some(tx.notes.clone().unwrap())
+}
+
+fn prepare_transaction_notes(tx: &BeancountTransaction) -> String {
+    let merchant_name = tx.merchant_name.clone().unwrap_or(String::new());
+    let amount = prepare_amount(tx);
+
+    format!("{}{}", merchant_name, amount)
+}
+
+fn prepare_amount(tx: &BeancountTransaction) -> String {
+    if tx.currency == tx.local_currency {
+        String::new()
+    } else {
+        if let Some(iso_code) = iso::find(&tx.local_currency) {
+            format!(" {}", Money::from_minor(tx.local_amount, iso_code))
+        } else {
+            format!(" {} {}", tx.local_amount, tx.local_currency)
+        }
+    }
 }
 
 async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {

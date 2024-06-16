@@ -12,14 +12,14 @@ pub struct Transaction {
 }
 
 /// Represents a Beancount double entry posting
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Postings {
     pub liability_posting: LiabilityPosting,
     pub asset_posting: AssetPosting,
 }
 
 /// represents a Beancount Liability posting
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LiabilityPosting {
     pub account: LiabilityAccount,
     pub amount: f64,
@@ -28,7 +28,7 @@ pub struct LiabilityPosting {
 }
 
 /// represents a Beancount Asset posting
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AssetPosting {
     pub account: AssetAccount,
     pub amount: f64,
