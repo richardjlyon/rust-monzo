@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use sqlx::{Pool, Sqlite};
 use tracing_log::log::{error, info};
 
@@ -12,6 +13,8 @@ pub struct Category {
 }
 
 // -- Services -------------------------------------------------------------------------
+
+#[async_trait]
 pub trait Service {
     async fn save_category(&self, category: &Category) -> Result<(), Error>;
 }
@@ -30,6 +33,7 @@ impl SqliteCategoryService {
 
 // -- Service Implementations ----------------------------------------------------------
 
+#[async_trait]
 impl Service for SqliteCategoryService {
     #[tracing::instrument(name = "Save category", skip(self, category_fc))]
     async fn save_category(&self, category_fc: &Category) -> Result<(), Error> {

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                SELECT\n                    t.id,\n                    t.created,\n                    t.settled,\n                    a.owner_type AS account_name,\n                    t.amount,\n                    a.currency,\n                    t.local_amount,\n                    t.local_currency,\n                    t.description,\n                    t.notes,\n                    t.category_id,\n                    m.name AS merchant_name\n\n                FROM transactions t\n                JOIN accounts a ON t.account_id = a.id\n                LEFT JOIN merchants m ON t.merchant_id = m.id\n                WHERE t.created\n                BETWEEN $1 AND $2\n\n            ",
+  "query": "\n                SELECT\n                    t.id,\n                    t.created,\n                    t.settled,\n                    a.owner_type AS account_name,\n                    t.amount,\n                    a.currency,\n                    t.local_amount,\n                    t.local_currency,\n                    t.description,\n                    t.notes,\n                    c.name AS category_name,\n                    m.name AS merchant_name\n\n                FROM transactions t\n                JOIN accounts a ON t.account_id = a.id\n                JOIN categories c ON t.category_id = c.id\n                LEFT JOIN merchants m ON t.merchant_id = m.id\n                WHERE t.created\n                BETWEEN $1 AND $2\n\n            ",
   "describe": {
     "columns": [
       {
@@ -54,7 +54,7 @@
         "type_info": "Text"
       },
       {
-        "name": "category_id",
+        "name": "category_name",
         "ordinal": 10,
         "type_info": "Text"
       },
@@ -82,5 +82,5 @@
       true
     ]
   },
-  "hash": "7f27c10b991564a5e768e881fe7e39ef347f97aa8c93c14803cded0a3bf84b56"
+  "hash": "d6e4c19092d0d50ed49871936069bb71612aa81be1ac3c3f9cdaf100beb27baf"
 }

@@ -110,7 +110,7 @@ impl DatabasePool {
         .await?;
 
         let category = Category {
-            id: "category_1_id".to_string(),
+            id: "1".to_string(),
             name: "category_1".to_string(),
         };
 

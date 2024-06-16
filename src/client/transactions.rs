@@ -69,7 +69,6 @@ mod test {
         println!("->> {:?}", monthly_intervals.clone());
 
         for (since, before) in monthly_intervals.clone() {
-            println!("->> {} - {}", since, before);
             let transactions = monzo
                 .transactions(account_id, &since, &before, None)
                 .await

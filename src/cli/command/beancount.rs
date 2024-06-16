@@ -76,7 +76,7 @@ fn prepare_liability_posting(tx: &BeancountTransaction) -> LiabilityPosting {
     let liability_account = LiabilityAccount {
         account_type: AccountType::Liabilities,
         currency: tx.local_currency.clone(),
-        category: tx.category_id.clone(),
+        category: tx.category_name.clone(),
     };
 
     LiabilityPosting {

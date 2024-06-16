@@ -89,7 +89,7 @@ pub struct BeancountTransaction {
     pub local_currency: String,
     pub description: Option<String>,
     pub notes: Option<String>,
-    pub category_id: String,
+    pub category_name: String,
     pub merchant_name: Option<String>,
 }
 
@@ -317,11 +317,12 @@ impl Service for SqliteTransactionService {
                     t.local_currency,
                     t.description,
                     t.notes,
-                    t.category_id,
+                    c.name AS category_name,
                     m.name AS merchant_name
 
                 FROM transactions t
                 JOIN accounts a ON t.account_id = a.id
+                JOIN categories c ON t.category_id = c.id
                 LEFT JOIN merchants m ON t.merchant_id = m.id
                 WHERE t.created
                 BETWEEN $1 AND $2
@@ -409,6 +410,7 @@ mod tests {
         let service = SqliteTransactionService::new(pool);
         let mut tx_resp = TransactionResponse::default();
         tx_resp.account_id = "1".to_string();
+        tx_resp.category = "1".to_string();
 
         // Act
         let result = service.save_transaction(&tx_resp).await;
