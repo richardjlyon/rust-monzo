@@ -1,5 +1,7 @@
 //! Beancount
 
+use std::{fs::File, io::Write};
+
 use chrono::NaiveDateTime;
 use rusty_money::{iso, Money};
 
@@ -29,11 +31,11 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
 
     // Open liabilities
     directives.push(Directive::Comment("liabilities".to_string()));
-    directives.extend(config_liabilities()?);
+    directives.extend(config_liabilities(pool.clone()).await?);
 
     // Open equity accounts
-    directives.push(Directive::Comment("equities".to_string()));
-    directives.extend(config_equities()?);
+    // directives.push(Directive::Comment("equities".to_string()));
+    // directives.extend(config_equities()?);
 
     // Banking - Get January `Personal` transactions
     directives.push(Directive::Comment("transactions".to_string()));
@@ -62,11 +64,9 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
         }
     }
 
-    // Second pass: Process transactions to combine transfers
-    // TODO: Combine transfers
-
+    let mut file = File::create("report.beancount")?;
     for d in directives {
-        println!("{}", d.to_formatted_string());
+        file.write_all(d.to_formatted_string().as_bytes())?;
     }
 
     Ok(())
