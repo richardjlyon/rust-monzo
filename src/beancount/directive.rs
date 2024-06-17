@@ -1,6 +1,7 @@
 //! Contains the `Directive` enum and its implementation
 
 use chrono::NaiveDate;
+use convert_case::{Case, Casing};
 
 use super::{AssetAccount, Transaction as BeanTransaction};
 
@@ -29,7 +30,7 @@ impl Directive {
                     None => String::new(),
                 };
                 format!(
-                    "{}{} open {:account_width$} {}",
+                    "{}{} open {:account_width$} {}\n",
                     comment,
                     date,
                     account.to_string(),
@@ -42,7 +43,7 @@ impl Directive {
                     None => String::new(),
                 };
                 format!(
-                    "{}{} close {:account_width$}",
+                    "{}{} close {:account_width$}\n",
                     comment,
                     date,
                     account.to_string(),

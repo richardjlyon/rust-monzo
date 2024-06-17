@@ -57,7 +57,7 @@ impl fmt::Display for AssetAccount {
             self.account_type,
             self.currency,
             self.provider.to_case(Case::Pascal),
-            self.name.replace(' ', "").to_case(Case::Title)
+            self.name.replace(' ', "").to_case(Case::Pascal)
         )
     }
 }
