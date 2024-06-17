@@ -1,9 +1,8 @@
 //! Contains the `Directive` enum and its implementation
 
 use chrono::NaiveDate;
-use convert_case::{Case, Casing};
 
-use super::{AssetAccount, Transaction as BeanTransaction};
+use super::{Account, Transaction as BeanTransaction};
 
 type Comment = String;
 
@@ -11,10 +10,10 @@ type Comment = String;
 #[derive(Debug)]
 pub enum Directive {
     Comment(String),
-    Open(NaiveDate, AssetAccount, Option<Comment>),
-    Close(NaiveDate, AssetAccount, Option<Comment>),
+    Open(NaiveDate, Account, Option<Comment>),
+    Close(NaiveDate, Account, Option<Comment>),
     Transaction(BeanTransaction),
-    Balance(NaiveDate, AssetAccount),
+    Balance(NaiveDate, Account),
 }
 
 impl Directive {

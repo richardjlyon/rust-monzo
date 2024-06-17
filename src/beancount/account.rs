@@ -15,49 +15,29 @@ pub enum AccountType {
     Expense,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct LiabilityAccount {
-    pub(crate) account_type: AccountType,
-    pub(crate) currency: String,
-    pub(crate) provider: String,
-    pub(crate) category: String,
-}
-
 /// Represents a Beancount account
+/// e.g. `Assets:GBP:Monzo:Personal`
 #[derive(Debug, Deserialize, Clone)]
-pub struct AssetAccount {
+pub struct Account {
     pub(crate) account_type: AccountType,
     pub(crate) currency: String,
-    pub(crate) provider: String,
+    pub(crate) account_name: Option<String>,
     pub(crate) name: String,
 }
 
-// Implement Display for a Liability
-// e.g. `Liabilities:GBP:Monzo:Bills`
-impl fmt::Display for LiabilityAccount {
+impl fmt::Display for Account {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let account_name = match &self.account_name {
+            Some(name) => format!("{}:", name),
+            None => String::new(),
+        };
         write!(
             f,
-            "{}:{}:{}:{}",
-            self.account_type,
-            self.currency,
-            self.provider.to_case(Case::Pascal),
-            self.category.to_case(Case::Pascal)
-        )
-    }
-}
-
-// Implement Display for an Asset
-// e.g. `Assets:GBP:Monzo:Personal`
-impl fmt::Display for AssetAccount {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}:{}:{}:{}",
-            self.account_type,
-            self.currency,
-            self.provider.to_case(Case::Pascal),
-            self.name.replace(' ', "").to_case(Case::Pascal)
+            "{}{}{}{}",
+            format!("{}:", self.account_type),
+            format!("{}:", self.currency),
+            account_name,
+            format!("{}", self.name.to_case(Case::Pascal)),
         )
     }
 }

@@ -1,5 +1,6 @@
 beancount_filepath = "/Users/richardlyon/beancount"
 start_date = "2024-01-01"
+provider = "Monzo"
 
 [custom_categories]
 category_0000AeU961sBDb6GUYcQh1 = "Subscriptions"
@@ -14,20 +15,15 @@ category_0000AioenOrylFWbO3KVmL = "Hobby"
 category_0000AeR7gxWtXy4Hzy0ULL = "Energy"
 category_0000AgThBIKMlNhgpZPRhZ = "Maintenance"
 
-[[assets]]
-name = "Personal"
-account_type = "Assets"
-currency = "GBP"
-provider = "Starling"
 
 [[liabilities]]
-name = "AccountsPayable"
 account_type = "Liabilities"
 currency = "GBP"
-provider = "Monzo"
+account_name = "Personal"
+name = "AccountsPayable"
 
 [[equities]]
 account_type = "Equities"
 currency = "GBP"
-provider = "Monzo"
+account_name = "Personal"
 name = "Opening-Balances"

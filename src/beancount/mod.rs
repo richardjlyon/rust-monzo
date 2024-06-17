@@ -14,7 +14,7 @@ mod account;
 mod directive;
 mod transaction;
 
-pub use account::{AccountType, AssetAccount, LiabilityAccount};
+pub use account::{Account, AccountType};
 pub use directive::Directive;
 pub use transaction::{AssetPosting, LiabilityPosting, Postings, Transaction};
 
@@ -28,10 +28,11 @@ pub struct Beancount {
 pub struct BeanSettings {
     pub beancount_filepath: PathBuf,
     pub start_date: NaiveDate,
+    pub provider: String,
     pub custom_categories: Option<HashMap<String, String>>,
-    pub assets: Option<Vec<AssetAccount>>,
-    pub liabilities: Option<Vec<AssetAccount>>,
-    pub equities: Option<Vec<AssetAccount>>,
+    pub assets: Option<Vec<Account>>,
+    pub liabilities: Option<Vec<Account>>,
+    pub equities: Option<Vec<Account>>,
 }
 
 impl Beancount {

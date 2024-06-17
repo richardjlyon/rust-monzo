@@ -3,12 +3,14 @@
 use std::{fs::File, io::Write};
 
 use chrono::NaiveDateTime;
+use config::Case;
+use convert_case::Casing;
 use rusty_money::{iso, Money};
 
 use crate::{
     beancount::{
-        AccountType, AssetAccount, AssetPosting, Beancount, Directive, LiabilityAccount,
-        LiabilityPosting, Postings, Transaction,
+        Account, AccountType, AssetPosting, Beancount, Directive, LiabilityPosting, Postings,
+        Transaction,
     },
     date_ranges,
     error::AppErrors as Error,
@@ -43,7 +45,7 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     let service = SqliteTransactionService::new(pool.clone());
     let start = NaiveDateTime::parse_from_str("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
     let end = NaiveDateTime::parse_from_str("2024-01-31 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap();
-    let date_ranges = date_ranges(start, end, 30);
+    let date_ranges = date_ranges(start, end, 31);
 
     // First pass: Get all transactions
     for (since, before) in date_ranges {
@@ -88,13 +90,14 @@ async fn prepare_liability_posting(
     pool: &DatabasePool,
     tx: &BeancountTransaction,
 ) -> Result<LiabilityPosting, Error> {
+    let bc = Beancount::from_config()?;
     let category = map_category_name(pool, &tx.category_name, &tx.description).await?;
 
-    let liability_account = LiabilityAccount {
+    let liability_account = Account {
         account_type: AccountType::Liabilities,
-        provider: tx.account_name.clone(),
         currency: tx.local_currency.clone(),
-        category,
+        account_name: Some(tx.account_name.to_case(Case::Pascal).clone()),
+        name: category,
     };
 
     Ok(LiabilityPosting {
@@ -127,10 +130,10 @@ async fn map_category_name(
 }
 
 fn prepare_asset_posting(tx: &BeancountTransaction) -> AssetPosting {
-    let asset_account = AssetAccount {
+    let asset_account = Account {
         account_type: AccountType::Assets,
         currency: tx.currency.to_string(),
-        provider: "Monzo".to_string(),
+        account_name: None,
         name: tx.account_name.to_string(),
     };
 
@@ -187,10 +190,10 @@ async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let accounts = acc_service.read_accounts().await?;
 
     for account in accounts {
-        let beanaccount = AssetAccount {
+        let beanaccount = Account {
             account_type: AccountType::Assets,
             currency: account.currency,
-            provider: "Monzo".to_string(),
+            account_name: None,
             name: account.owner_type,
         };
         directives.push(Directive::Open(open_date, beanaccount, None));
@@ -236,11 +239,11 @@ fn config_assets() -> Result<Vec<Directive>, Error> {
     }
 
     for account in bc.settings.assets.unwrap() {
-        let beanaccount = AssetAccount {
-            name: account.name,
+        let beanaccount = Account {
             account_type: AccountType::Assets,
             currency: account.currency,
-            provider: account.provider,
+            account_name: None,
+            name: account.name,
         };
         directives.push(Directive::Open(open_date, beanaccount, None));
     }
@@ -265,28 +268,23 @@ async fn config_liabilities(pool: DatabasePool) -> Result<Vec<Directive>, Error>
             .get_categories_for_account(&account.id)
             .await?
         {
-            // println!("->> {} -> {}", account.owner_type, category.name);
-            let beanaccount = AssetAccount {
-                name: category.name,
+            let beanaccount = Account {
                 account_type: AccountType::Liabilities,
                 currency: account.currency.clone(),
-                provider: account.owner_type.clone(),
+                account_name: Some(account.owner_type.to_case(Case::Pascal).clone()),
+                name: category.name.clone(),
             };
             directives.push(Directive::Open(open_date, beanaccount, None));
         }
     }
 
-    //   get categories as a sorted set
-    //   for each category
-    //     open a liability account
-
     // open configured liabilities
     for account in bc.settings.liabilities.unwrap() {
-        let beanaccount = AssetAccount {
-            name: account.name,
+        let beanaccount = Account {
             account_type: AccountType::Liabilities,
             currency: account.currency,
-            provider: account.provider,
+            account_name: Some(bc.settings.provider.clone()),
+            name: account.name,
         };
         directives.push(Directive::Open(open_date, beanaccount, None));
     }
@@ -304,11 +302,11 @@ fn config_equities() -> Result<Vec<Directive>, Error> {
     }
 
     for account in bc.settings.equities.unwrap() {
-        let beanaccount = AssetAccount {
-            name: account.name,
+        let beanaccount = Account {
             account_type: AccountType::Equities,
             currency: account.currency,
-            provider: account.provider,
+            account_name: None,
+            name: account.name,
         };
         directives.push(Directive::Open(open_date, beanaccount, None));
     }

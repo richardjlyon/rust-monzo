@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use super::{AssetAccount, LiabilityAccount};
+use super::Account;
 
 /// Represents a Beancount transaction
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub struct Postings {
 /// represents a Beancount Liability posting
 #[derive(Debug, Clone)]
 pub struct LiabilityPosting {
-    pub account: LiabilityAccount,
+    pub account: Account,
     pub amount: f64,
     pub currency: String,
     pub description: String,
@@ -30,7 +30,7 @@ pub struct LiabilityPosting {
 /// represents a Beancount Asset posting
 #[derive(Debug, Clone)]
 pub struct AssetPosting {
-    pub account: AssetAccount,
+    pub account: Account,
     pub amount: f64,
     pub currency: String,
 }
@@ -96,10 +96,10 @@ mod tests {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
 
-        let liability_account = LiabilityAccount {
+        let liability_account = Account {
             account_type: AccountType::Liabilities,
             currency: "GBP".to_string(),
-            category: "Groceries".to_string(),
+            name: "Groceries".to_string(),
         };
 
         let asset_account = AssetAccount {
