@@ -2,6 +2,7 @@
 /accounts
 
 .env
+*.beancount
 configuration.toml
 
 .DS_Store
