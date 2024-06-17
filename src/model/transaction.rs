@@ -7,6 +7,7 @@ use sqlx::{FromRow, Pool, Sqlite};
 use tracing_log::log::{error, info};
 
 use super::{
+    category::Category,
     merchant::{Merchant, Service as MerchantService, SqliteMerchantService},
     DatabasePool,
 };
@@ -111,6 +112,7 @@ pub trait Service {
         from: NaiveDateTime,
         until: NaiveDateTime,
     ) -> Result<Vec<BeancountTransaction>, Error>;
+    async fn get_categories_for_account(&self, account_id: &str) -> Result<Vec<Category>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -335,6 +337,25 @@ impl Service for SqliteTransactionService {
         .await?;
 
         Ok(transactions)
+    }
+
+    // get the set of categories for a given account
+    async fn get_categories_for_account(&self, account_id: &str) -> Result<Vec<Category>, Error> {
+        let db = self.pool.db();
+        let categories = sqlx::query_as!(
+            Category,
+            r"
+                SELECT DISTINCT c.id, c.name
+                FROM categories c
+                JOIN transactions t ON c.id = t.category_id
+                WHERE t.account_id = $1
+            ",
+            account_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(categories)
     }
 }
 

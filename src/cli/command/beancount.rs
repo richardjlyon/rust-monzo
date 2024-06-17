@@ -240,15 +240,39 @@ fn config_assets() -> Result<Vec<Directive>, Error> {
     Ok(directives)
 }
 
-fn config_liabilities() -> Result<Vec<Directive>, Error> {
+async fn config_liabilities(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let open_date = bc.settings.start_date;
     let mut directives: Vec<Directive> = Vec::new();
+    let account_service = SqliteAccountService::new(pool.clone());
+    let transaction_service = SqliteTransactionService::new(pool.clone());
 
     if bc.settings.liabilities.is_none() {
         return Ok(directives);
     }
 
+    // open a liability account for each category in each account
+    for account in account_service.read_accounts().await? {
+        for category in transaction_service
+            .get_categories_for_account(&account.id)
+            .await?
+        {
+            // println!("->> {} -> {}", account.owner_type, category.name);
+            let beanaccount = AssetAccount {
+                name: category.name,
+                account_type: AccountType::Liabilities,
+                currency: account.currency.clone(),
+                provider: account.owner_type.clone(),
+            };
+            directives.push(Directive::Open(open_date, beanaccount, None));
+        }
+    }
+
+    //   get categories as a sorted set
+    //   for each category
+    //     open a liability account
+
+    // open configured liabilities
     for account in bc.settings.liabilities.unwrap() {
         let beanaccount = AssetAccount {
             name: account.name,
