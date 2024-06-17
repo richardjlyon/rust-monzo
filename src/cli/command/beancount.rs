@@ -28,11 +28,11 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     // Open assets
     directives.push(Directive::Comment("assets".to_string()));
     directives.extend(monzo_assets(pool.clone()).await?);
-    directives.extend(monzo_pots(pool.clone()).await?);
     directives.extend(config_assets()?);
 
     // Open liabilities
     directives.push(Directive::Comment("liabilities".to_string()));
+    directives.extend(monzo_pots(pool.clone()).await?);
     directives.extend(config_liabilities(pool.clone()).await?);
 
     // Open equity accounts
@@ -202,6 +202,10 @@ async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     Ok(directives)
 }
 
+// Create a liability account for each pot
+// Implementation note: An edge case is the `savings` pot which is given a category of `savings` rather than
+// `transfers`. We handle this by checking for the `savings` category and excluding it from the liability as it is
+// created  in `monzo_zssets()` from its `category_id`.
 async fn monzo_pots(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let open_date = bc.settings.start_date;
@@ -211,19 +215,27 @@ async fn monzo_pots(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let account_service = SqliteAccountService::new(pool.clone());
     let transaction_service = SqliteTransactionService::new(pool.clone());
 
-    for account in account_service.read_accounts().await? {
+    let accounts = account_service.read_accounts().await?;
+
+    for account in accounts {
         let pots = transaction_service
             .get_pots_for_account(&account.owner_type)
             .await?;
-        for pot in pots {
-            let beanaccount = Account {
-                account_type: AccountType::Assets,
-                currency: pot.currency,
-                account_name: Some(account.owner_type.clone().to_case(Case::Pascal)),
-                name: pot.name,
-            };
-            directives.push(Directive::Open(open_date, beanaccount, None));
-        }
+
+        let valid_pots = pots
+            .into_iter()
+            .filter(|pot| pot.pot_type != "flexible_savings")
+            .map(|pot| {
+                let beanaccount = Account {
+                    account_type: AccountType::Liabilities,
+                    currency: pot.currency,
+                    account_name: Some(account.owner_type.clone().to_case(Case::Pascal)),
+                    name: pot.name,
+                };
+                Directive::Open(open_date, beanaccount, None)
+            });
+
+        directives.extend(valid_pots);
     }
 
     Ok(directives)
