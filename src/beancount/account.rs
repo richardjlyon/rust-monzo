@@ -19,6 +19,7 @@ pub enum AccountType {
 pub struct LiabilityAccount {
     pub(crate) account_type: AccountType,
     pub(crate) currency: String,
+    pub(crate) provider: String,
     pub(crate) category: String,
 }
 
@@ -31,20 +32,23 @@ pub struct AssetAccount {
     pub(crate) name: String,
 }
 
-// Implement Display for Account
+// Implement Display for a Liability
+// e.g. `Liabilities:GBP:Monzo:Bills`
 impl fmt::Display for LiabilityAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}:{}:{}",
+            "{}:{}:{}:{}",
             self.account_type,
             self.currency,
+            self.provider.to_case(Case::Pascal),
             self.category.to_case(Case::Pascal)
         )
     }
 }
 
-// Implement Display for Account
+// Implement Display for an Asset
+// e.g. `Assets:GBP:Monzo:Personal`
 impl fmt::Display for AssetAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -52,7 +56,7 @@ impl fmt::Display for AssetAccount {
             "{}:{}:{}:{}",
             self.account_type,
             self.currency,
-            self.provider,
+            self.provider.to_case(Case::Pascal),
             self.name.replace(' ', "").to_case(Case::Title)
         )
     }

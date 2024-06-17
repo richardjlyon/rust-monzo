@@ -56,11 +56,12 @@ impl Transaction {
 }
 
 // Implement Display for Liability Posting
+// e.g. `Liabilities:GBP:Monzo:Bills         59.99 GBP`
 impl LiabilityPosting {
     fn to_formatted_string(&self) -> String {
         let amount = self.amount / 100.0;
         format!(
-            "{:30} {:>10.2} {}",
+            "{:50} {:>10.2} {}",
             self.account.to_string(),
             amount,
             self.currency,
@@ -69,11 +70,12 @@ impl LiabilityPosting {
 }
 
 // Implement Display for Asset Posting
+// e.g. `Assets:GBP:Monzo:Personal         -59.99 GBP`
 impl AssetPosting {
     fn to_formatted_string(&self) -> String {
         let amount = self.amount / 100.0;
         format!(
-            "{:30} {:>10.2} {}",
+            "{:50} {:>10.2} {}",
             self.account.to_string(),
             amount,
             self.currency,

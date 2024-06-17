@@ -89,8 +89,11 @@ async fn prepare_liability_posting(
         tx.category_name.clone()
     };
 
+    println!("->> {:#?}", tx);
+
     let liability_account = LiabilityAccount {
         account_type: AccountType::Liabilities,
+        provider: tx.account_name.clone(),
         currency: tx.local_currency.clone(),
         category: category_name,
     };
