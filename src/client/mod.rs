@@ -57,7 +57,7 @@ impl Monzo {
         Ok(Monzo { base_url, client })
     }
 
-    #[tracing::instrument(name = "Handle response", skip(response))]
+    #[tracing::instrument(name = "Handle response", skip(response), fields(url=%response.url()))]
     async fn handle_response<T: DeserializeOwned>(response: Response) -> Result<T, Error> {
         if response.status().is_success() {
             info!("Response is successful");
