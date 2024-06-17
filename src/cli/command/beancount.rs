@@ -202,17 +202,25 @@ async fn monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
 async fn monzo_pots(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let open_date = bc.settings.start_date;
-    let pot_service = SqlitePotService::new(pool.clone());
+
     let mut directives: Vec<Directive> = Vec::new();
-    let pots = pot_service.read_pots().await?;
-    for pot in pots {
-        let beanaccount = AssetAccount {
-            account_type: AccountType::Assets,
-            currency: pot.currency,
-            provider: "Monzo".to_string(),
-            name: pot.name,
-        };
-        directives.push(Directive::Open(open_date, beanaccount, None));
+
+    let account_service = SqliteAccountService::new(pool.clone());
+    let transaction_service = SqliteTransactionService::new(pool.clone());
+
+    for account in account_service.read_accounts().await? {
+        let pots = transaction_service
+            .get_pots_for_account(&account.owner_type)
+            .await?;
+        for pot in pots {
+            let beanaccount = Account {
+                account_type: AccountType::Assets,
+                currency: pot.currency,
+                account_name: Some(account.owner_type.clone().to_case(Case::Pascal)),
+                name: pot.name,
+            };
+            directives.push(Directive::Open(open_date, beanaccount, None));
+        }
     }
 
     Ok(directives)

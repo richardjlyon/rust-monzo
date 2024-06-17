@@ -1,7 +1,7 @@
 use account::AccountForDB;
 use category::Category;
 use chrono::Utc;
-use pot::Pot;
+use pot::PotResponse;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
@@ -158,7 +158,7 @@ impl DatabasePool {
         }
 
         // insert pot
-        let pot = Pot {
+        let pot = PotResponse {
             id: "1".to_string(),
             name: "pot_name".to_string(),
             balance: 1234,

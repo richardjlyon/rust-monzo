@@ -9,6 +9,7 @@ use tracing_log::log::{error, info};
 use super::{
     category::Category,
     merchant::{Merchant, Service as MerchantService, SqliteMerchantService},
+    pot::Pot,
     DatabasePool,
 };
 use crate::error::AppErrors as Error;
@@ -92,6 +93,7 @@ pub struct BeancountTransaction {
     pub notes: Option<String>,
     pub category_name: String,
     pub merchant_name: Option<String>,
+    pub pot_name: Option<String>,
 }
 
 // -- Services -------------------------------------------------------------------------
@@ -113,6 +115,7 @@ pub trait Service {
         until: NaiveDateTime,
     ) -> Result<Vec<BeancountTransaction>, Error>;
     async fn get_categories_for_account(&self, account_id: &str) -> Result<Vec<Category>, Error>;
+    async fn get_pots_for_account(&self, account_id: &str) -> Result<Vec<Pot>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -319,6 +322,7 @@ impl Service for SqliteTransactionService {
                     t.local_currency,
                     t.description,
                     t.notes,
+                    p.name AS pot_name,
                     c.name AS category_name,
                     m.name AS merchant_name
 
@@ -326,6 +330,7 @@ impl Service for SqliteTransactionService {
                 JOIN accounts a ON t.account_id = a.id
                 JOIN categories c ON t.category_id = c.id
                 LEFT JOIN merchants m ON t.merchant_id = m.id
+                LEFT JOIN pots p ON t.description = p.id
                 WHERE t.created
                 BETWEEN $1 AND $2
 
@@ -356,6 +361,23 @@ impl Service for SqliteTransactionService {
         .await?;
 
         Ok(categories)
+    }
+
+    async fn get_pots_for_account(&self, account_name: &str) -> Result<Vec<Pot>, Error> {
+        let db = self.pool.db();
+        let pots = sqlx::query_as!(
+            Pot,
+            r"
+                SELECT *
+                FROM pots
+                WHERE account_name = $1
+            ",
+            account_name
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(pots)
     }
 }
 

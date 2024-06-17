@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT DISTINCT c.id, c.name\n                FROM categories c\n                JOIN transactions t ON c.id = t.category_id\n                WHERE t.account_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "4e16af66bb223cdb037c939806dd2ff056aecbd49ca6ead1378d6fe129ea2a07"
+}

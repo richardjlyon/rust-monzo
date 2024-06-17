@@ -6,14 +6,14 @@ use std::collections::HashMap;
 
 use super::Monzo;
 use crate::error::AppErrors as Error;
-use crate::model::pot::{Pot, Pots};
+use crate::model::pot::{PotResponse, Pots};
 
 impl Monzo {
     /// Get all pots that are not deleted for a given account
     ///
     /// # Errors
     /// Will return errors if authentication fails or the Monzo API cannot be reached.
-    pub async fn pots(&self, account_id: &str) -> Result<Vec<Pot>, Error> {
+    pub async fn pots(&self, account_id: &str) -> Result<Vec<PotResponse>, Error> {
         let url = format!("{}pots?current_account_id={}", self.base_url, account_id);
         let response = self.client.get(&url).send().await?;
         let pots: Pots = Self::handle_response(response).await?;

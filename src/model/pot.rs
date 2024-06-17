@@ -11,11 +11,12 @@ use super::DatabasePool;
 
 #[derive(Deserialize, Debug)]
 pub struct Pots {
-    pub pots: Vec<Pot>,
+    pub pots: Vec<PotResponse>,
 }
 
+// Represents a Pot in the Monzo API
 #[derive(Deserialize, Debug, Default)]
-pub struct Pot {
+pub struct PotResponse {
     pub id: String,
     pub name: String,
     pub balance: i64,
@@ -23,6 +24,33 @@ pub struct Pot {
     pub deleted: bool,
     #[serde(rename = "type")]
     pub pot_type: String,
+}
+
+// Represents a Pot in the app
+#[derive(Debug)]
+pub struct Pot {
+    pub id: String,
+    pub name: String,
+    pub balance: i64,
+    pub currency: String,
+    pub deleted: bool,
+    pub pot_type: String,
+    pub account_name: String,
+}
+
+impl From<(PotResponse, String)> for Pot {
+    fn from(tuple: (PotResponse, String)) -> Self {
+        let (pot, account_name) = tuple;
+        Self {
+            id: pot.id,
+            name: pot.name,
+            balance: pot.balance,
+            currency: pot.currency,
+            deleted: pot.deleted,
+            pot_type: pot.pot_type,
+            account_name,
+        }
+    }
 }
 
 // -- Services -------------------------------------------------------------------------
@@ -68,15 +96,17 @@ impl Service for SqlitePotService {
                 INSERT INTO pots (
                     id,
                     name,
+                    account_name,
                     balance,
                     currency,
                     deleted,
                     pot_type
                 )
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
             ",
             pot_fc.id,
             pot_fc.name,
+            pot_fc.account_name,
             pot_fc.balance,
             pot_fc.currency,
             pot_fc.deleted,
@@ -170,7 +200,7 @@ mod tests {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqlitePotService::new(pool);
-        let pot = Pot::default();
+        let pot = PotResponse::default();
 
         // Act
         let result = service.save_pot(&pot).await;

@@ -15,6 +15,7 @@ CREATE TABLE accounts (
 CREATE TABLE pots (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
+    account_name TEXT NOT NULL,
     balance INTEGER NOT NULL,
     currency TEXT NOT NULL,
     deleted BOOLEAN NOT NULL,

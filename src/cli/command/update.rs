@@ -19,7 +19,7 @@ use crate::{
         account::{AccountForDB, Service as AccountService, SqliteAccountService},
         category::{Category, Service as CategoryService, SqliteCategoryService},
         merchant::Merchant,
-        pot::{Pot, Service, SqlitePotService},
+        pot::{Pot, PotResponse, Service, SqlitePotService},
         transaction::{
             Service as TransactionService, SqliteTransactionService, TransactionResponse,
         },
@@ -75,12 +75,14 @@ async fn get_pots(
     accounts: &Vec<AccountForDB>,
 ) -> Result<(Vec<Pot>, HashMap<String, String>), Error> {
     let monzo = Monzo::new()?;
-    let mut pots: Vec<Pot> = Vec::new();
     let pot_names = monzo.pot_description_from_id().await?;
 
+    let mut pots: Vec<Pot> = Vec::new();
     for account in accounts {
         let account_pots = monzo.pots(&account.id).await?;
-        pots.extend(account_pots);
+        for pot_resp in account_pots {
+            pots.push(Pot::from((pot_resp, account.owner_type.clone())));
+        }
     }
 
     Ok((pots, pot_names))
