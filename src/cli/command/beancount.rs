@@ -72,30 +72,29 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     Ok(())
 }
 
+// Prepare a beancount liability posting
+//
+// Implementation note: There are a few awkward edge cases to handle here associated with the
+// `transfers` category.
+//
+// 1. Transfers into the bank.
+// These are recorded with a description that is a code in the form `Monzo-XXXXX`. We map these to the
+// `income` category.
+//
+// 2. Transfers between pots.
+// These are recorded with the pot_id in the description. We look up the pot name  and use that as
+// the category name.
 async fn prepare_liability_posting(
     pool: &DatabasePool,
     tx: &BeancountTransaction,
 ) -> Result<LiabilityPosting, Error> {
-    let pot_service = SqlitePotService::new(pool.clone());
-
-    // Replace "transfer" with the name of the pot transferred to
-    // NOTE: Handle edge case of transterring into the bank
-    let category_name = if tx.category_name == "transfers" {
-        match pot_service.read_pot(&tx.description).await? {
-            Some(p) => p.name,
-            None => tx.description.clone(),
-        }
-    } else {
-        tx.category_name.clone()
-    };
-
-    println!("->> {:#?}", tx);
+    let category = map_category_name(pool, &tx.category_name, &tx.description).await?;
 
     let liability_account = LiabilityAccount {
         account_type: AccountType::Liabilities,
         provider: tx.account_name.clone(),
         currency: tx.local_currency.clone(),
-        category: category_name,
+        category,
     };
 
     Ok(LiabilityPosting {
@@ -104,6 +103,27 @@ async fn prepare_liability_posting(
         currency: tx.currency.to_string(),
         description: String::new(),
     })
+}
+
+async fn map_category_name(
+    pool: &DatabasePool,
+    category_name: &str,
+    description: &str,
+) -> Result<String, Error> {
+    let pot_service = SqlitePotService::new(pool.clone());
+
+    if category_name != "transfers" {
+        return Ok(category_name.to_string());
+    }
+
+    if description.starts_with("Monzo-") {
+        return Ok("income".to_string());
+    }
+
+    match pot_service.read_pot(description).await? {
+        Some(p) => return Ok(p.name),
+        None => return Ok(description.to_string()),
+    }
 }
 
 fn prepare_asset_posting(tx: &BeancountTransaction) -> AssetPosting {
