@@ -38,9 +38,9 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     // Banking - Get January `Personal` transactions
     directives.push(Directive::Comment("transactions".to_string()));
 
-    let service = SqliteTransactionService::new(pool);
-    let start = NaiveDateTime::parse_from_str("2024-04-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
-    let end = NaiveDateTime::parse_from_str("2024-04-30 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap();
+    let service = SqliteTransactionService::new(pool.clone());
+    let start = NaiveDateTime::parse_from_str("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
+    let end = NaiveDateTime::parse_from_str("2024-01-31 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap();
     let date_ranges = date_ranges(start, end, 30);
 
     // First pass: Get all transactions
@@ -48,7 +48,7 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
         let transactions = service.read_beancount_data(since, before).await?;
 
         for tx in transactions {
-            let liability_posting = prepare_liability_posting(&tx);
+            let liability_posting = prepare_liability_posting(&pool, &tx).await?;
             let asset_posting = prepare_asset_posting(&tx);
 
             let postings = Postings {
@@ -72,19 +72,35 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     Ok(())
 }
 
-fn prepare_liability_posting(tx: &BeancountTransaction) -> LiabilityPosting {
+async fn prepare_liability_posting(
+    pool: &DatabasePool,
+    tx: &BeancountTransaction,
+) -> Result<LiabilityPosting, Error> {
+    let pot_service = SqlitePotService::new(pool.clone());
+
+    // Replace "transfer" with the name of the pot transferred to
+    // NOTE: Handle edge case of transterring into the bank
+    let category_name = if tx.category_name == "transfers" {
+        match pot_service.read_pot(&tx.description).await? {
+            Some(p) => p.name,
+            None => tx.description.clone(),
+        }
+    } else {
+        tx.category_name.clone()
+    };
+
     let liability_account = LiabilityAccount {
         account_type: AccountType::Liabilities,
         currency: tx.local_currency.clone(),
-        category: tx.category_name.clone(),
+        category: category_name,
     };
 
-    LiabilityPosting {
+    Ok(LiabilityPosting {
         account: liability_account,
         amount: -tx.amount as f64,
         currency: tx.currency.to_string(),
         description: String::new(),
-    }
+    })
 }
 
 fn prepare_asset_posting(tx: &BeancountTransaction) -> AssetPosting {
