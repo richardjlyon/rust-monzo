@@ -22,8 +22,8 @@ category_0000AgThBIKMlNhgpZPRhZ = "Maintenance"
 # account_name = "Personal"
 # name = "AccountsPayable"
 
-# [[equities]]
-# account_type = "Equities"
-# currency = "GBP"
-# account_name = "Personal"
-# name = "Opening-Balances"
+[[equities]]
+account_type = "Equities"
+currency = "GBP"
+account_name = "Personal"
+name = "Opening-Balances"
