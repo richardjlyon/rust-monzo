@@ -19,7 +19,7 @@ use crate::{
         account::{AccountForDB, Service as AccountService, SqliteAccountService},
         category::{Category, Service as CategoryService, SqliteCategoryService},
         merchant::Merchant,
-        pot::{Pot, PotResponse, Service, SqlitePotService},
+        pot::{Pot, Service, SqlitePotService},
         transaction::{
             Service as TransactionService, SqliteTransactionService, TransactionResponse,
         },

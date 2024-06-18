@@ -16,14 +16,14 @@ category_0000AeR7gxWtXy4Hzy0ULL = "Energy"
 category_0000AgThBIKMlNhgpZPRhZ = "Maintenance"
 
 
-[[liabilities]]
-account_type = "Liabilities"
-currency = "GBP"
-account_name = "Personal"
-name = "AccountsPayable"
+# [[liabilities]]
+# account_type = "Liabilities"
+# currency = "GBP"
+# account_name = "Personal"
+# name = "AccountsPayable"
 
-[[equities]]
-account_type = "Equities"
-currency = "GBP"
-account_name = "Personal"
-name = "Opening-Balances"
+# [[equities]]
+# account_type = "Equities"
+# currency = "GBP"
+# account_name = "Personal"
+# name = "Opening-Balances"

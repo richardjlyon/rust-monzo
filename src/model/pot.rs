@@ -59,7 +59,8 @@ impl From<(PotResponse, String)> for Pot {
 pub trait Service {
     async fn save_pot(&self, pot_fc: &Pot) -> Result<(), Error>;
     async fn read_pots(&self) -> Result<Vec<Pot>, Error>;
-    async fn read_pot(&self, pot_id: &str) -> Result<Option<Pot>, Error>;
+    async fn read_pot_by_id(&self, pot_id: &str) -> Result<Option<Pot>, Error>;
+    async fn read_pot_by_type(&self, pot_type: &str) -> Result<Option<Pot>, Error>;
 }
 
 #[derive(Debug, Clone)]
@@ -150,7 +151,7 @@ impl Service for SqlitePotService {
     }
 
     #[tracing::instrument(name = "Get pot")]
-    async fn read_pot(&self, pot_id: &str) -> Result<Option<Pot>, Error> {
+    async fn read_pot_by_id(&self, pot_id: &str) -> Result<Option<Pot>, Error> {
         let db = self.pool.db();
 
         let pot = sqlx::query_as!(
@@ -161,6 +162,25 @@ impl Service for SqlitePotService {
                 WHERE id = $1
             ",
             pot_id,
+        )
+        .fetch_optional(db)
+        .await?;
+
+        Ok(pot)
+    }
+
+    #[tracing::instrument(name = "Get pot by type")]
+    async fn read_pot_by_type(&self, pot_type: &str) -> Result<Option<Pot>, Error> {
+        let db = self.pool.db();
+
+        let pot = sqlx::query_as!(
+            Pot,
+            r"
+                SELECT *
+                FROM pots
+                WHERE pot_type = $1
+            ",
+            pot_type,
         )
         .fetch_optional(db)
         .await?;
@@ -230,7 +250,7 @@ mod tests {
         let pot_id = "1".to_string();
 
         // Act
-        let result = service.read_pot(&pot_id).await.unwrap().unwrap();
+        let result = service.read_pot_by_id(&pot_id).await.unwrap().unwrap();
 
         // Assert
         assert_eq!(result.id, pot_id);
