@@ -15,15 +15,39 @@ category_0000AioenOrylFWbO3KVmL = "Hobby"
 category_0000AeR7gxWtXy4Hzy0ULL = "Energy"
 category_0000AgThBIKMlNhgpZPRhZ = "Maintenance"
 
+[[assets]]
+account_type = "Assets"
+currency = "GBP"
+account_name = "Personal"
+label = "savings"
 
-# [[liabilities]]
-# account_type = "Liabilities"
-# currency = "GBP"
-# account_name = "Personal"
-# name = "AccountsPayable"
+[[assets]]
+account_type = "Assets"
+currency = "GBP"
+account_name = "Personal"
+label = "transfers"
+
+[[assets]]
+account_type = "Assets"
+currency = "GBP"
+account_name = "Personal"
+label = "income"
+
+[[assets]]
+account_type = "Assets"
+currency = "GBP"
+account_name = "Personal"
+label = "cash"
+
+[[assets]]
+account_type = "Assets"
+currency = "GBP"
+account_name = "Business"
+label = "income"
+
 
 [[equities]]
 account_type = "Equities"
 currency = "GBP"
 account_name = "Personal"
-name = "Opening-Balances"
+label = "Opening-Balances"

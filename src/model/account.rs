@@ -38,7 +38,7 @@ pub struct AccountForDB {
     pub description: String,
     pub currency: String,
     pub country_code: String,
-    pub owner_type: String,
+    pub owner_type: String, // e.g. "personal"
     pub account_number: String,
     pub sort_code: String,
 }

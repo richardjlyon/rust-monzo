@@ -1,6 +1,7 @@
 //! Contains the `Directive` enum and its implementation
 
 use chrono::NaiveDate;
+use convert_case::{Case, Casing};
 
 use super::{Account, Transaction as BeanTransaction};
 
@@ -21,7 +22,7 @@ impl Directive {
     pub fn to_formatted_string(&self) -> String {
         let account_width = 40;
         match self {
-            Directive::Comment(comment) => format!("\n* {}\n", comment),
+            Directive::Comment(comment) => format!("\n* {}\n\n", comment.to_case(Case::Title)),
             Directive::Open(date, account, comment) => {
                 let currency = &account.currency;
                 let comment = match comment {
@@ -70,18 +71,18 @@ mod tests {
     fn open_directive() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = AssetAccount {
+        let account = Account {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
-            provider: "Monzo".to_string(),
-            name: "Personal".to_string(),
+            account_name: "Personal".to_string(),
+            label: None,
         };
         // Act
         let directive = Directive::Open(date, account, None);
         // Assert
         assert_eq!(
             directive.to_formatted_string(),
-            "2024-06-13 open Assets:GBP:Monzo:Personal                GBP"
+            "2024-06-13 open Assets:GBP:Personal                      GBP\n"
         );
     }
 
@@ -89,11 +90,11 @@ mod tests {
     fn open_directive_comment() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = AssetAccount {
+        let account = Account {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
-            provider: "Monzo".to_string(),
-            name: "Personal".to_string(),
+            account_name: "Personal".to_string(),
+            label: None,
         };
         let comment = Some("Initial Deposit".to_string());
         // Act
@@ -101,7 +102,7 @@ mod tests {
         // Assert
         assert_eq!(
             directive.to_formatted_string(),
-            "; Initial Deposit.\n2024-06-13 open Assets:GBP:Monzo:Personal                GBP"
+            "; Initial Deposit.\n2024-06-13 open Assets:GBP:Personal                      GBP\n"
         );
     }
 
@@ -109,18 +110,18 @@ mod tests {
     fn close_directive() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = AssetAccount {
+        let account = Account {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
-            provider: "Monzo".to_string(),
-            name: "Personal".to_string(),
+            account_name: "Personal".to_string(),
+            label: None,
         };
         // Act
         let directive = Directive::Close(date, account, None);
         // Assert
         assert_eq!(
             directive.to_formatted_string(),
-            "2024-06-13 close Assets:GBP:Monzo:Personal               "
+            "2024-06-13 close Assets:GBP:Personal                     \n"
         );
     }
 
@@ -128,11 +129,11 @@ mod tests {
     fn close_directive_comment() {
         // Arrange
         let date = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
-        let account = AssetAccount {
+        let account = Account {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
-            provider: "Monzo".to_string(),
-            name: "Personal".to_string(),
+            account_name: "Personal".to_string(),
+            label: None,
         };
         let comment = Some("To Close".to_string());
         // Act
@@ -140,7 +141,7 @@ mod tests {
         // Assert
         assert_eq!(
             directive.to_formatted_string(),
-            "; To Close.\n2024-06-13 close Assets:GBP:Monzo:Personal               "
+            "; To Close.\n2024-06-13 close Assets:GBP:Personal                     \n"
         );
     }
 }

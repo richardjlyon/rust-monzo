@@ -16,7 +16,7 @@ mod transaction;
 
 pub use account::{Account, AccountType};
 pub use directive::Directive;
-pub use transaction::{AssetPosting, LiabilityPosting, Postings, Transaction};
+pub use transaction::{Posting, Postings, Transaction};
 
 /// A struct representing a Beancount file
 pub struct Beancount {

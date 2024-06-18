@@ -6,7 +6,7 @@ use crate::error::AppErrors as Error;
 
 use super::DatabasePool;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Category {
     pub id: String,
     pub name: String,

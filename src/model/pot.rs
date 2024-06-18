@@ -27,7 +27,7 @@ pub struct PotResponse {
 }
 
 // Represents a Pot in the app
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Pot {
     pub id: String,
     pub name: String,
@@ -220,7 +220,7 @@ mod tests {
         // Arrange
         let (pool, _tmp) = test_db().await;
         let service = SqlitePotService::new(pool);
-        let pot = PotResponse::default();
+        let pot = Pot::default();
 
         // Act
         let result = service.save_pot(&pot).await;

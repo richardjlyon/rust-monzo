@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use super::Account;
+use super::{Account, AccountType};
 
 /// Represents a Beancount transaction
 #[derive(Debug)]
@@ -14,72 +14,72 @@ pub struct Transaction {
 /// Represents a Beancount double entry posting
 #[derive(Debug, Clone)]
 pub struct Postings {
-    pub liability_posting: LiabilityPosting,
-    pub asset_posting: AssetPosting,
+    pub to: Posting,
+    pub from: Posting,
 }
 
 /// represents a Beancount Liability posting
 #[derive(Debug, Clone)]
-pub struct LiabilityPosting {
+pub struct Posting {
     pub account: Account,
     pub amount: f64,
     pub currency: String,
-    pub description: String,
-}
-
-/// represents a Beancount Asset posting
-#[derive(Debug, Clone)]
-pub struct AssetPosting {
-    pub account: Account,
-    pub amount: f64,
-    pub currency: String,
+    pub description: Option<String>,
 }
 
 impl Transaction {
     #[must_use]
+
     pub fn to_formatted_string(&self) -> String {
         let comment = match &self.comment {
-            Some(s) if s.is_empty() => String::new(),
+            Some(s) if s.trim().is_empty() => String::new(),
             Some(d) => format!("; {}\n", d),
             None => String::new(),
         };
 
         format!(
-            "{}{} * \"{}\"\n  {}\n  {}",
+            "{}{} * \"{}\"\n  {}\n  {}\n",
             comment,
             self.date,
             self.notes,
-            self.postings.liability_posting.to_formatted_string(),
-            self.postings.asset_posting.to_formatted_string(),
+            self.postings.to.to_formatted_string(),
+            self.postings.from.to_formatted_string(),
         )
     }
 }
 
-// Implement Display for Liability Posting
-// e.g. `Liabilities:GBP:Monzo:Bills         59.99 GBP`
-impl LiabilityPosting {
+// FIXME: Formatting is conditional on self.account.account_type
+impl Posting {
     fn to_formatted_string(&self) -> String {
         let amount = self.amount / 100.0;
-        format!(
-            "{:50} {:>10.2} {}",
-            self.account.to_string(),
-            amount,
-            self.currency,
-        )
-    }
-}
 
-// Implement Display for Asset Posting
-// e.g. `Assets:GBP:Monzo:Personal         -59.99 GBP`
-impl AssetPosting {
-    fn to_formatted_string(&self) -> String {
-        let amount = self.amount / 100.0;
-        format!(
-            "{:50} {:>10.2} {}",
-            self.account.to_string(),
-            amount,
-            self.currency,
-        )
+        match self.account.account_type {
+            AccountType::Assets => {
+                format!(
+                    "{:<50} {:>10.2} {}",
+                    self.account.to_string(),
+                    amount,
+                    self.currency,
+                )
+            }
+            AccountType::Liabilities => {
+                format!(
+                    "{:<50} {:>10.2} {}",
+                    self.account.to_string(),
+                    amount,
+                    self.currency,
+                )
+            }
+            _ => {
+                format!(
+                    "  {}  {:>10.2} {}  ; {}",
+                    self.account.to_string(),
+                    amount,
+                    self.currency,
+                    self.description.as_deref().unwrap_or(""),
+                )
+            }
+        }
     }
 }
 
@@ -99,32 +99,34 @@ mod tests {
         let liability_account = Account {
             account_type: AccountType::Liabilities,
             currency: "GBP".to_string(),
-            name: "Groceries".to_string(),
+            account_name: "Groceries".to_string(),
+            label: None,
         };
 
-        let asset_account = AssetAccount {
+        let asset_account = Account {
             account_type: AccountType::Assets,
             currency: "GBP".to_string(),
-            provider: "Monzo".to_string(),
-            name: "Personal".to_string(),
+            account_name: "Personal".to_string(),
+            label: None,
         };
 
-        let liability_posting = LiabilityPosting {
+        let liability_posting = Posting {
             account: liability_account,
             amount: -1000.0,
             currency: "GBP".to_string(),
-            description: "AMEX PAYMENT ACH PAYMENT".to_string(),
+            description: Some("AMEX PAYMENT ACH PAYMENT".to_string()),
         };
 
-        let asset_posting = AssetPosting {
+        let asset_posting = Posting {
             account: asset_account,
             amount: 1000.0,
             currency: "GBP".to_string(),
+            description: None,
         };
 
         let postings = Postings {
-            asset_posting,
-            liability_posting,
+            from: asset_posting,
+            to: liability_posting,
         };
         let transaction = Transaction {
             comment: Some("ONLINE PAYMENT - THANK YOU".to_string()),
@@ -134,8 +136,9 @@ mod tests {
         };
         let expected = r#"; ONLINE PAYMENT - THANK YOU
 2024-06-13 * "Yacht purchase"
-  Liabilities:GBP:Groceries          -10.00 GBP
-  Assets:GBP:Monzo:Personal           10.00 GBP"#;
+  Liabilities:GBP:Groceries                              -10.00 GBP
+  Assets:GBP:Personal                                     10.00 GBP
+"#;
 
         // Act
         let transaction_string = transaction.to_formatted_string();
