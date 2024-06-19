@@ -298,6 +298,10 @@ async fn prepare_to_posting(
     pool: &DatabasePool,
     tx: &BeancountTransaction,
 ) -> Result<Posting, Error> {
+    let pot_service = SqlitePotService::new(pool.clone());
+
+    let mut amount = -tx.amount as f64;
+
     let mut account = Account {
         account_type: AccountType::Expenses,
         currency: tx.currency.clone(),
@@ -305,20 +309,7 @@ async fn prepare_to_posting(
         label: Some(tx.category_name.clone().to_case(Case::Pascal)),
     };
 
-    let pot_service = SqlitePotService::new(pool.clone());
-    let mut amount = -tx.amount as f64;
-
     match tx.category_name.as_str() {
-        "transfers" => {
-            if tx.description.starts_with("Monzo-") {
-                account.account_type = AccountType::Income;
-                amount = tx.amount as f64;
-            } else if pot_service.read_pot_by_id(&tx.description).await?.is_some() {
-                account.account_type = AccountType::Assets;
-            } else {
-                account.account_type = AccountType::Income;
-            }
-        }
         "cash" => {
             account.account_type = AccountType::Assets;
         }
@@ -329,6 +320,16 @@ async fn prepare_to_posting(
         "savings" => {
             account.account_type = AccountType::Assets;
             account.label = Some("savings".to_string());
+        }
+        "transfers" => {
+            if tx.description.starts_with("Monzo-") {
+                account.account_type = AccountType::Income;
+                amount = -tx.amount as f64;
+            } else if pot_service.read_pot_by_id(&tx.description).await?.is_some() {
+                account.account_type = AccountType::Assets;
+            } else {
+                account.account_type = AccountType::Income;
+            }
         }
         _ => {}
     }
@@ -342,39 +343,26 @@ async fn prepare_to_posting(
 }
 
 fn prepare_from_posting(tx: &BeancountTransaction) -> Posting {
-    match tx.description.starts_with("Monzo-") {
-        true => {
-            let amount = -tx.amount as f64;
-            let account = Account {
-                account_type: AccountType::Equity,
-                currency: tx.currency.to_string(),
-                account_name: tx.account_name.to_string(),
-                label: Some("OpeningBalances".to_string()),
-            };
+    let mut amount = tx.amount as f64;
 
-            return Posting {
-                account,
-                amount,
-                currency: tx.currency.clone(),
-                description: None,
-            };
-        }
-        false => {
-            let amount = tx.amount as f64;
-            let account = Account {
-                account_type: AccountType::Assets,
-                currency: tx.currency.to_string(),
-                account_name: tx.account_name.to_string(),
-                label: None,
-            };
+    let mut account = Account {
+        account_type: AccountType::Assets,
+        currency: tx.currency.to_string(),
+        account_name: tx.account_name.to_string(),
+        label: None,
+    };
 
-            return Posting {
-                account,
-                amount,
-                currency: tx.currency.clone(),
-                description: None,
-            };
-        }
+    if tx.description.starts_with("Monzo-") {
+        amount = tx.amount as f64;
+        account.account_type = AccountType::Equity;
+        account.label = Some("OpeningBalances".to_string());
+    }
+
+    Posting {
+        account,
+        amount,
+        currency: tx.currency.clone(),
+        description: None,
     }
 }
 
