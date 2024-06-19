@@ -43,8 +43,8 @@ impl Beancount {
     pub fn from_config() -> Result<Self, Error> {
         let cfg = config::Config::builder()
             .add_source(config::File::new(
-                "beancount.toml",
-                config::FileFormat::Toml,
+                "beancount.yaml",
+                config::FileFormat::Yaml,
             ))
             .build()?;
 
