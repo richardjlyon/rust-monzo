@@ -32,7 +32,9 @@ pub struct BeanSettings {
     pub custom_categories: Option<HashMap<String, String>>,
     pub assets: Option<Vec<Account>>,
     pub liabilities: Option<Vec<Account>>,
-    pub equities: Option<Vec<Account>>,
+    pub income: Option<Vec<Account>>,
+    pub expenses: Option<Vec<Account>>,
+    pub equity: Option<Vec<Account>>,
 }
 
 impl Beancount {

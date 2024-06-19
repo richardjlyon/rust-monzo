@@ -11,9 +11,9 @@ use serde::Deserialize;
 pub enum AccountType {
     Assets,
     Liabilities,
-    Equities,
     Income,
     Expenses,
+    Equity,
 }
 
 /// Represents a Beancount account

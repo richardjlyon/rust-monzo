@@ -1,19 +1,17 @@
+.DS_Store
+
 /target
 /accounts
 
-.env
 *.beancount
+
+.env
 configuration.toml
 
-.DS_Store
-
 db.sqlite
-
 db.sqlite-wal
-
 db.sqlite-shm
-
-out.rs
 
 notes and queries.md
 response.json
+out.rs

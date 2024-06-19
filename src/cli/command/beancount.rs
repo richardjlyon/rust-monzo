@@ -53,6 +53,11 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     directives.extend(open_config_assets()?);
     directives.extend(open_monzo_pot_liabilities(pool.clone()).await?);
 
+    // -- Open Income Accounts ---------------------------------------------------------
+
+    directives.push(Directive::Comment("income accounts".to_string()));
+    directives.extend(open_config_income()?);
+
     // -- Open Expense Accounts  ---------------------------------------------------------
 
     directives.push(Directive::Comment("expense accounts".to_string()));
@@ -60,8 +65,8 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
 
     // Open Liability Accounts ---------------------------------------------------------
 
-    // directives.push(Directive::Comment("liabilities".to_string()));
-    // directives.extend(open_config_liabilities().await?);
+    directives.push(Directive::Comment("liabilities".to_string()));
+    directives.extend(open_config_liabilities().await?);
 
     // -- Post Transactions-------------------------------------------------------------
 
@@ -97,7 +102,7 @@ fn open_config_equity_assets() -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let mut directives: Vec<Directive> = Vec::new();
 
-    if let Some(equity_accounts) = bc.settings.equities {
+    if let Some(equity_accounts) = bc.settings.equity {
         for equity in equity_accounts {
             directives.push(Directive::Open(bc.settings.start_date, equity, None));
         }
@@ -110,7 +115,6 @@ async fn open_monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> 
     let bc = Beancount::from_config()?;
     let open_date = bc.settings.start_date;
     let acc_service = SqliteAccountService::new(pool.clone());
-    let pot_service = SqlitePotService::new(pool.clone());
     let mut directives: Vec<Directive> = Vec::new();
     let accounts = acc_service.read_accounts().await?;
 
@@ -125,21 +129,6 @@ async fn open_monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> 
         directives.push(Directive::Open(open_date, beanaccount, None));
     }
 
-    // Add the Flexible Savings Pot as an asset
-    // This is a special case as it is not a transfer
-    match pot_service.read_pot_by_type("flexible_savings").await? {
-        Some(pot) => {
-            let beanaccount = Account {
-                account_type: AccountType::Assets,
-                currency: pot.currency,
-                account_name: pot.name,
-                label: None,
-            };
-            directives.push(Directive::Open(open_date, beanaccount, None));
-        }
-        None => (),
-    }
-
     Ok(directives)
 }
 
@@ -152,6 +141,23 @@ fn open_config_assets() -> Result<Vec<Directive>, Error> {
         Some(asset_accounts) => {
             for asset_account in asset_accounts {
                 directives.push(Directive::Open(open_date, asset_account, None));
+            }
+        }
+        None => (),
+    }
+
+    Ok(directives)
+}
+
+fn open_config_income() -> Result<Vec<Directive>, Error> {
+    let bc = Beancount::from_config()?;
+    let open_date = bc.settings.start_date;
+    let mut directives: Vec<Directive> = Vec::new();
+
+    match bc.settings.income {
+        Some(income_account) => {
+            for income_account in income_account {
+                directives.push(Directive::Open(open_date, income_account, None));
             }
         }
         None => (),
@@ -234,7 +240,7 @@ async fn open_monzo_pot_liabilities(pool: DatabasePool) -> Result<Vec<Directive>
             .filter(|pot| pot.pot_type != "flexible_savings")
             .map(|pot| {
                 let beanaccount = Account {
-                    account_type: AccountType::Liabilities,
+                    account_type: AccountType::Assets,
                     currency: pot.currency,
                     account_name: account.owner_type.clone().to_case(Case::Pascal),
                     label: Some(pot.name.to_case(Case::Pascal)),
@@ -293,30 +299,36 @@ async fn prepare_to_posting(
     tx: &BeancountTransaction,
 ) -> Result<Posting, Error> {
     let mut account = Account {
-        account_type: AccountType::Liabilities,
+        account_type: AccountType::Expenses,
         currency: tx.currency.clone(),
         account_name: tx.account_name.clone().to_case(Case::Pascal),
         label: Some(tx.category_name.clone().to_case(Case::Pascal)),
     };
 
+    let pot_service = SqlitePotService::new(pool.clone());
     let mut amount = -tx.amount as f64;
 
     match tx.category_name.as_str() {
         "transfers" => {
             if tx.description.starts_with("Monzo-") {
-                account.account_type = AccountType::Assets;
-                account.label = Some("income".to_string());
+                account.account_type = AccountType::Income;
                 amount = tx.amount as f64;
-            } else if tx.category_name == "savings" {
+            } else if pot_service.read_pot_by_id(&tx.description).await?.is_some() {
                 account.account_type = AccountType::Assets;
-                account.label = Some("savings".to_string());
             } else {
-                let pot_service = SqlitePotService::new(pool.clone());
-                account.label = match pot_service.read_pot_by_id(&tx.description).await? {
-                    Some(pot) => Some(pot.name),
-                    None => Some(tx.description.clone()),
-                };
+                account.account_type = AccountType::Income;
             }
+        }
+        "cash" => {
+            account.account_type = AccountType::Assets;
+        }
+        "income" => {
+            account.account_type = AccountType::Income;
+            account.label = None;
+        }
+        "savings" => {
+            account.account_type = AccountType::Assets;
+            account.label = Some("savings".to_string());
         }
         _ => {}
     }
@@ -329,20 +341,40 @@ async fn prepare_to_posting(
     })
 }
 
-// FIXME: Handle transferring from the flexible_savings pot
 fn prepare_from_posting(tx: &BeancountTransaction) -> Posting {
-    let account = Account {
-        account_type: AccountType::Assets,
-        currency: tx.currency.to_string(),
-        account_name: tx.account_name.to_string(),
-        label: None,
-    };
+    match tx.description.starts_with("Monzo-") {
+        true => {
+            let amount = -tx.amount as f64;
+            let account = Account {
+                account_type: AccountType::Equity,
+                currency: tx.currency.to_string(),
+                account_name: tx.account_name.to_string(),
+                label: Some("OpeningBalances".to_string()),
+            };
 
-    Posting {
-        account,
-        amount: tx.amount as f64,
-        currency: tx.currency.clone(),
-        description: None,
+            return Posting {
+                account,
+                amount,
+                currency: tx.currency.clone(),
+                description: None,
+            };
+        }
+        false => {
+            let amount = tx.amount as f64;
+            let account = Account {
+                account_type: AccountType::Assets,
+                currency: tx.currency.to_string(),
+                account_name: tx.account_name.to_string(),
+                label: None,
+            };
+
+            return Posting {
+                account,
+                amount,
+                currency: tx.currency.clone(),
+                description: None,
+            };
+        }
     }
 }
 

@@ -70,13 +70,28 @@ impl Posting {
                     self.currency,
                 )
             }
-            _ => {
+            AccountType::Income => {
                 format!(
-                    "  {}  {:>10.2} {}  ; {}",
+                    "{:<50} {:>10.2} {}",
                     self.account.to_string(),
                     amount,
                     self.currency,
-                    self.description.as_deref().unwrap_or(""),
+                )
+            }
+            AccountType::Expenses => {
+                format!(
+                    "{:<50} {:>10.2} {}",
+                    self.account.to_string(),
+                    amount,
+                    self.currency,
+                )
+            }
+            AccountType::Equity => {
+                format!(
+                    "{:<50} {:>10.2} {}",
+                    self.account.to_string(),
+                    amount,
+                    self.currency,
                 )
             }
         }
