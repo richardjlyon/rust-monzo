@@ -44,12 +44,12 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     // -- Open Equity Accounts -----------------------------------------------------
 
     directives.push(Directive::Comment("equity accounts".to_string()));
-    directives.extend(open_config_equity_assets()?);
+    directives.extend(open_config_equity_accounts()?);
 
     // -- Open Asset Accounts --------------------------------------------------------------
 
     directives.push(Directive::Comment("asset accounts".to_string()));
-    directives.extend(open_monzo_assets(pool.clone()).await?);
+    directives.extend(open_monzo_accounts(pool.clone()).await?);
     directives.extend(open_config_assets()?);
     directives.extend(open_monzo_pot_liabilities(pool.clone()).await?);
 
@@ -68,6 +68,26 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     directives.push(Directive::Comment("liabilities".to_string()));
     directives.extend(open_config_liabilities().await?);
 
+    // Post Savings transactions ---------------------------------------------------------
+
+    directives.push(Directive::Comment("savings transactions".to_string()));
+
+    // Post Essential Fixed ---------------------------------------------------------
+
+    directives.push(Directive::Comment(
+        "Essential fixed transactions".to_string(),
+    ));
+
+    // Post Essential Variable transactions ---------------------------------------------------------
+
+    directives.push(Directive::Comment(
+        "Essential Variable transactions".to_string(),
+    ));
+
+    // Post Discretionary transactions ---------------------------------------------------------
+
+    directives.push(Directive::Comment("Discretionary transactions".to_string()));
+
     // -- Post Transactions-------------------------------------------------------------
 
     directives.push(Directive::Comment("transactions".to_string()));
@@ -77,7 +97,7 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
 
         for tx in transactions {
             let to_posting = prepare_to_posting(&pool, &tx).await?;
-            let from_posting = prepare_from_posting(&tx);
+            let from_posting = prepare_from_posting(&tx)?;
 
             let postings = Postings {
                 to: to_posting,
@@ -98,20 +118,20 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     Ok(())
 }
 
-fn open_config_equity_assets() -> Result<Vec<Directive>, Error> {
+fn open_config_equity_accounts() -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let mut directives: Vec<Directive> = Vec::new();
 
     if let Some(equity_accounts) = bc.settings.equity {
         for equity in equity_accounts {
-            directives.push(Directive::Open(bc.settings.start_date, equity, None));
+            directives.push(Directive::OpenEquity(bc.settings.start_date, equity, None));
         }
     }
 
     Ok(directives)
 }
 
-async fn open_monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
+async fn open_monzo_accounts(pool: DatabasePool) -> Result<Vec<Directive>, Error> {
     let bc = Beancount::from_config()?;
     let open_date = bc.settings.start_date;
     let acc_service = SqliteAccountService::new(pool.clone());
@@ -122,11 +142,12 @@ async fn open_monzo_assets(pool: DatabasePool) -> Result<Vec<Directive>, Error> 
     for account in accounts {
         let beanaccount = Account {
             account_type: AccountType::Assets,
-            currency: account.currency,
-            account_name: account.owner_type,
-            label: None,
+            country: account.currency,
+            institution: "Monzo".to_string(), // FIXME
+            account: account.owner_type,
+            sub_account: None,
         };
-        directives.push(Directive::Open(open_date, beanaccount, None));
+        directives.push(Directive::OpenAccount(open_date, beanaccount, None));
     }
 
     Ok(directives)
@@ -140,7 +161,7 @@ fn open_config_assets() -> Result<Vec<Directive>, Error> {
     match bc.settings.assets {
         Some(asset_accounts) => {
             for asset_account in asset_accounts {
-                directives.push(Directive::Open(open_date, asset_account, None));
+                directives.push(Directive::OpenAccount(open_date, asset_account, None));
             }
         }
         None => (),
@@ -157,7 +178,7 @@ fn open_config_income() -> Result<Vec<Directive>, Error> {
     match bc.settings.income {
         Some(income_account) => {
             for income_account in income_account {
-                directives.push(Directive::Open(open_date, income_account, None));
+                directives.push(Directive::OpenAccount(open_date, income_account, None));
             }
         }
         None => (),
@@ -192,10 +213,9 @@ async fn open_monzo_expenses(pool: DatabasePool) -> Result<Vec<Directive>, Error
         let valid_categories: Vec<Category> = account_categories
             .iter()
             .filter(|c| {
-                !asset_accounts.iter().any(|a| {
-                    a.label.as_deref().unwrap_or_default().to_case(Case::Lower)
-                        == c.name.to_case(Case::Lower)
-                })
+                !asset_accounts
+                    .iter()
+                    .any(|a| a.account.to_case(Case::Lower) == c.name.to_case(Case::Lower))
             })
             .cloned()
             .collect();
@@ -203,11 +223,12 @@ async fn open_monzo_expenses(pool: DatabasePool) -> Result<Vec<Directive>, Error
         for category in valid_categories {
             let beanaccount = Account {
                 account_type: AccountType::Expenses,
-                currency: account.currency.clone(),
-                account_name: account.owner_type.clone(),
-                label: Some(category.name),
+                country: account.currency.clone(),
+                institution: "Monzo".to_string(), // FIXME
+                account: account.owner_type.clone(),
+                sub_account: Some(category.name),
             };
-            directives.push(Directive::Open(open_date, beanaccount, None));
+            directives.push(Directive::OpenAccount(open_date, beanaccount, None));
         }
     }
 
@@ -241,11 +262,12 @@ async fn open_monzo_pot_liabilities(pool: DatabasePool) -> Result<Vec<Directive>
             .map(|pot| {
                 let beanaccount = Account {
                     account_type: AccountType::Assets,
-                    currency: pot.currency,
-                    account_name: account.owner_type.clone().to_case(Case::Pascal),
-                    label: Some(pot.name.to_case(Case::Pascal)),
+                    country: pot.currency,
+                    institution: "Monzo".to_string(), // FIXME
+                    account: account.owner_type.clone().to_case(Case::Pascal),
+                    sub_account: Some(pot.name.to_case(Case::Pascal)),
                 };
-                Directive::Open(open_date, beanaccount, None)
+                Directive::OpenAccount(open_date, beanaccount, None)
             });
 
         directives.extend(valid_pots);
@@ -266,13 +288,7 @@ async fn open_config_liabilities() -> Result<Vec<Directive>, Error> {
 
     // open configured liabilities
     for account in bc.settings.liabilities.unwrap() {
-        let beanaccount = Account {
-            account_type: AccountType::Liabilities,
-            currency: account.currency,
-            account_name: bc.settings.provider.clone(),
-            label: account.label,
-        };
-        directives.push(Directive::Open(open_date, beanaccount, None));
+        directives.push(Directive::OpenAccount(open_date, account, None));
     }
 
     Ok(directives)
@@ -298,15 +314,17 @@ async fn prepare_to_posting(
     pool: &DatabasePool,
     tx: &BeancountTransaction,
 ) -> Result<Posting, Error> {
+    let bc = Beancount::from_config()?;
     let pot_service = SqlitePotService::new(pool.clone());
 
     let mut amount = -tx.amount as f64;
 
     let mut account = Account {
         account_type: AccountType::Expenses,
-        currency: tx.currency.clone(),
-        account_name: tx.account_name.clone().to_case(Case::Pascal),
-        label: Some(tx.category_name.clone().to_case(Case::Pascal)),
+        country: tx.currency.clone(),
+        institution: "Monzo".to_string(), // FIXME"
+        account: tx.account_name.clone().to_case(Case::Pascal),
+        sub_account: Some(tx.category_name.clone().to_case(Case::Pascal)),
     };
 
     match tx.category_name.as_str() {
@@ -315,11 +333,11 @@ async fn prepare_to_posting(
         }
         "income" => {
             account.account_type = AccountType::Income;
-            account.label = None;
+            account.sub_account = None;
         }
         "savings" => {
             account.account_type = AccountType::Assets;
-            account.label = Some("savings".to_string());
+            account.sub_account = Some("savings".to_string());
         }
         "transfers" => {
             if tx.description.starts_with("Monzo-") {
@@ -342,28 +360,30 @@ async fn prepare_to_posting(
     })
 }
 
-fn prepare_from_posting(tx: &BeancountTransaction) -> Posting {
+fn prepare_from_posting(tx: &BeancountTransaction) -> Result<Posting, Error> {
+    let bc = Beancount::from_config()?;
     let mut amount = tx.amount as f64;
 
     let mut account = Account {
         account_type: AccountType::Assets,
-        currency: tx.currency.to_string(),
-        account_name: tx.account_name.to_string(),
-        label: None,
+        country: tx.currency.to_string(),
+        institution: "Monzo".to_string(), // FIXME
+        account: tx.account_name.to_string(),
+        sub_account: None,
     };
 
     if tx.description.starts_with("Monzo-") {
         amount = tx.amount as f64;
         account.account_type = AccountType::Equity;
-        account.label = Some("OpeningBalances".to_string());
+        account.sub_account = Some("OpeningBalances".to_string());
     }
 
-    Posting {
+    Ok(Posting {
         account,
         amount,
         currency: tx.currency.clone(),
         description: None,
-    }
+    })
 }
 
 fn prepare_transaction(tx: &BeancountTransaction, postings: &Postings) -> Transaction {

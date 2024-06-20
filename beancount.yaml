@@ -1,6 +1,5 @@
 beancount_filepath: "/Users/richardlyon/beancount"
 start_date: "2024-01-01"
-provider: "Monzo"
 
 custom_categories:
   category_0000AeU961sBDb6GUYcQh1: "Subscriptions"
@@ -17,46 +16,59 @@ custom_categories:
 
 equity:
   - account_type: "Equity"
-    currency: "GBP"
-    account_name: "Personal"
-    label: "Opening-Balances"
-
-  - account_type: "Equity"
-    currency: "GBP"
-    account_name: "Business"
-    label: "Opening-Balances"
+    account: "Opening-Balances"
 
 assets:
   - account_type: "Assets"
-    currency: "GBP"
-    account_name: "Personal"
-    label: "savings"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Personal"
+    sub_account: "savings"
 
   - account_type: "Assets"
-    currency: "GBP"
-    account_name: "Personal"
-    label: "transfers"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Personal"
+    sub_account: "transfers"
 
   - account_type: "Assets"
-    currency: "GBP"
-    account_name: "Personal"
-    label: "cash"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Personal"
+    sub_account: "cash"
 
 income:
   - account_type: "Income"
-    currency: "GBP"
-    account_name: "Personal"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Personal"
+    sub_account: "Pension"
 
   - account_type: "Income"
-    currency: "GBP"
-    account_name: "Personal"
-    label: "transfers"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Personal"
+    sub_account: "AirBnB"
 
   - account_type: "Income"
-    currency: "GBP"
-    account_name: "Business"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Business"
+    sub_account: "ReserveTravel"
 
   - account_type: "Income"
-    currency: "GBP"
-    account_name: "Business"
-    label: "transfers"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Personal"
+    sub_account: "transfers"
+
+  - account_type: "Income"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Business"
+
+  - account_type: "Income"
+    country: "GBP"
+    institution: "Monzo"
+    account: "Business"
+    sub_account: "transfers"

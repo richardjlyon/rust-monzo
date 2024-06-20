@@ -26,14 +26,15 @@ pub enum AccountType {
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct Account {
     pub(crate) account_type: AccountType,
-    pub(crate) currency: String,
-    pub(crate) account_name: String,
-    pub(crate) label: Option<String>,
+    pub(crate) country: String,
+    pub(crate) institution: String,
+    pub(crate) account: String,
+    pub(crate) sub_account: Option<String>,
 }
 
 impl fmt::Display for Account {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let label = match &self.label {
+        let label = match &self.sub_account {
             Some(label) => format!(":{}", label.to_case(Case::Pascal)),
             None => String::new(),
         };
@@ -41,8 +42,8 @@ impl fmt::Display for Account {
             f,
             "{}{}{}{}",
             format!("{}", self.account_type),
-            format!(":{}", self.currency.to_case(Case::Upper)),
-            format!(":{}", self.account_name.to_case(Case::Pascal)),
+            format!(":{}", self.country.to_case(Case::Upper)),
+            format!(":{}", self.account.to_case(Case::Pascal)),
             format!("{}", label),
         )
     }

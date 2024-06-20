@@ -5,7 +5,7 @@ use regex::Regex;
 use serde::Serialize;
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::num::ParseFloatError;
 
@@ -36,15 +36,15 @@ struct LocalCurrency {
 fn main() -> Result<(), Box<dyn Error>> {
     let file_names = vec![
         "monzo-discretionary",
-        // "monzo-essential-fixed",
-        // "monzo-essential-variable",
+        "monzo-essential-fixed",
+        "monzo-essential-variable",
         "monzo-savings",
     ];
 
     for file_name in file_names {
         let file_path = format!("src/bin/csv_data/{file_name}.csv");
-        let csv_path = format!("src/bin/csv_data/{file_name}-processed.csv");
-        let error_path = format!("src/bin/csv_data/{file_name}-error.txt");
+        let csv_path = format!("src/bin/csv_data/processed/{file_name}-processed.csv");
+        let error_path = format!("src/bin/csv_data/processed/{file_name}-error.txt");
 
         println!("Processing file: {file_path}...");
 
@@ -66,9 +66,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         wtr.flush()?;
 
-        let mut error_file = File::create(error_path)?;
-        for failure in failures {
-            writeln!(error_file, "{}", failure)?;
+        if failures.len() > 0 {
+            let mut error_file = File::create(error_path)?;
+            for failure in failures {
+                writeln!(error_file, "{}", failure)?;
+            }
         }
     }
 

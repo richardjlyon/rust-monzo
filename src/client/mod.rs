@@ -42,6 +42,7 @@ impl Monzo {
     /// Will return an error if the auth header can't be created or the client can't be built.
     pub fn new() -> Result<Self, Error> {
         let base_url = "https://api.monzo.com/".to_string();
+
         let config = get_config()?;
         let mut headers = HeaderMap::new();
         let auth_header_value = format!("Bearer {}", config.access_tokens.access_token);

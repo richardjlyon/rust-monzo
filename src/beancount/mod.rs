@@ -3,16 +3,20 @@
 //! This module generates a set of accounts in Beancount format from financial information
 //! stored in the database.
 
+mod account;
+mod directive;
+mod equity;
+mod expense;
+mod transaction;
+
 use chrono::NaiveDate;
+use equity::Equity;
+use expense::Expense;
 
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::error::AppErrors as Error;
-
-mod account;
-mod directive;
-mod transaction;
 
 pub use account::{Account, AccountType};
 pub use directive::Directive;
@@ -28,13 +32,12 @@ pub struct Beancount {
 pub struct BeanSettings {
     pub beancount_filepath: PathBuf,
     pub start_date: NaiveDate,
-    pub provider: String,
     pub custom_categories: Option<HashMap<String, String>>,
     pub assets: Option<Vec<Account>>,
     pub liabilities: Option<Vec<Account>>,
     pub income: Option<Vec<Account>>,
-    pub expenses: Option<Vec<Account>>,
-    pub equity: Option<Vec<Account>>,
+    pub expenses: Option<Vec<Expense>>,
+    pub equity: Option<Vec<Equity>>,
 }
 
 impl Beancount {
@@ -58,4 +61,12 @@ impl Beancount {
             }
         }
     }
+
+    // Iniitialise the file system
+    // pub fn initialise_filesystem(&self) -> Result<(), Error> {
+    //     let path = self.settings.beancount_filepath.clone();
+    //     let parent = path.parent().ok_or(Error::PathError)?;
+    //     std::fs::create_dir_all(parent)?;
+    //     Ok(())
+    // }
 }

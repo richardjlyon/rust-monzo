@@ -113,16 +113,18 @@ mod tests {
 
         let liability_account = Account {
             account_type: AccountType::Liabilities,
-            currency: "GBP".to_string(),
-            account_name: "Groceries".to_string(),
-            label: None,
+            country: "GBP".to_string(),
+            institution: "Monzo".to_string(),
+            account: "Groceries".to_string(),
+            sub_account: None,
         };
 
         let asset_account = Account {
             account_type: AccountType::Assets,
-            currency: "GBP".to_string(),
-            account_name: "Personal".to_string(),
-            label: None,
+            country: "GBP".to_string(),
+            institution: "Monzo".to_string(),
+            account: "Personal".to_string(),
+            sub_account: None,
         };
 
         let liability_posting = Posting {
