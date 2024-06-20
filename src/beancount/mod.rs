@@ -30,7 +30,7 @@ pub struct Beancount {
 /// A struct representing a Beancount configuration file on disk
 #[derive(Debug, Deserialize)]
 pub struct BeanSettings {
-    pub beancount_filepath: PathBuf,
+    pub root_dir: PathBuf,
     pub start_date: NaiveDate,
     pub custom_categories: Option<HashMap<String, String>>,
     pub assets: Option<Vec<Account>>,

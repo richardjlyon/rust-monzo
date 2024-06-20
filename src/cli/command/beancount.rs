@@ -1,6 +1,6 @@
 //! Beancount
 
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, path::PathBuf};
 
 use chrono::{Local, NaiveTime};
 use config::Case;
@@ -40,6 +40,10 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
     let date_ranges = date_ranges(since, before, 30);
 
     let service = SqliteTransactionService::new(pool.clone());
+
+    // -- Initialise the file system -----------------------------------------------------
+
+    initialise_file_system(&config.settings.root_dir)?;
 
     // -- Open Equity Accounts -----------------------------------------------------
 
@@ -110,9 +114,19 @@ pub async fn beancount(pool: DatabasePool) -> Result<(), Error> {
         }
     }
 
-    let mut file = File::create("report.beancount")?;
+    let file_path = config.settings.root_dir.join("report.beancount");
+    let mut file = File::create(file_path)?;
     for d in directives {
         file.write_all(d.to_formatted_string().as_bytes())?;
+    }
+
+    Ok(())
+}
+
+fn initialise_file_system(root_dir: &PathBuf) -> Result<(), Error> {
+    // if folder filepath does not exist, create it
+    if !root_dir.exists() {
+        std::fs::create_dir_all(root_dir)?;
     }
 
     Ok(())

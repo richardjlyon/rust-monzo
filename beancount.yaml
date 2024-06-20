@@ -1,4 +1,4 @@
-beancount_filepath: "/Users/richardlyon/beancount"
+root_dir: "/Users/richardlyon/beancount"
 start_date: "2024-01-01"
 
 custom_categories:
