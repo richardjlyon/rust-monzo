@@ -12,6 +12,7 @@ db.sqlite
 db.sqlite-wal
 db.sqlite-shm
 
+csv_data/
 notes and queries.md
 response.json
 out.rs
