@@ -47,10 +47,6 @@ async fn main() -> Result<(), Error> {
                 Err(e) => return Err(Error::Error(e.to_string())),
             }
         }
-        Commands::Bean {} => match command::beancount(pool).await {
-            Ok(_) => {}
-            Err(e) => eprintln!("Error: {}", e),
-        },
         Commands::Auth {} => match command::auth().await {
             Ok(_) => println!("Auth completed"),
             Err(e) => eprintln!("Error: {}", e),

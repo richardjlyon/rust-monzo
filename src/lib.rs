@@ -8,7 +8,6 @@
 
 use chrono::{NaiveDateTime, TimeDelta};
 
-pub mod beancount;
 pub mod cli;
 pub mod client;
 pub mod configuration;

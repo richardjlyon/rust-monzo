@@ -1,7 +1,13 @@
 [package]
 name = "monzo"
 version = "0.1.0"
+authors = ["Richard Lyon"]
 edition = "2021"
+description = "A rust command line application for downloading Monzo transaction history to an SQLITE database."
+licence = "MIT"
+repository = "https://github.com/richardjlyon/rust-monzo"
+readme = "README.md"
+keywords = ["monzo", "sqlite", "cli"]
 default-run = "monzo"
 
 [dependencies]

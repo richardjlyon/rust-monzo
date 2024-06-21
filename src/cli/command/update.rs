@@ -8,10 +8,10 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusty_money::{iso, Money};
+use serde::Deserialize;
 use tracing_log::log::{error, info};
 
 use crate::{
-    beancount::Beancount,
     client::Monzo,
     date_ranges,
     error::AppErrors as Error,
@@ -206,8 +206,8 @@ async fn persist_categories(
 ) -> Result<(), Error> {
     let category_service = SqliteCategoryService::new(connection_pool.clone());
 
-    let bc = Beancount::from_config()?;
-    let custom_categories = bc.settings.custom_categories;
+    let categories_config = Categories::from_config()?;
+    let custom_categories = categories_config.custom_categories;
 
     for tx_resp in transactions {
         let category_id = tx_resp.category.clone();
@@ -338,6 +338,30 @@ fn format_description(
     };
 
     description_fmt.to_string()
+}
+
+#[derive(Debug, Deserialize)]
+struct Categories {
+    custom_categories: Option<HashMap<String, String>>,
+}
+
+impl Categories {
+    pub fn from_config() -> Result<Self, Error> {
+        let cfg = config::Config::builder()
+            .add_source(config::File::new(
+                "categories.yaml",
+                config::FileFormat::Yaml,
+            ))
+            .build()?;
+
+        match cfg.try_deserialize::<Categories>() {
+            Ok(custom_categories) => Ok(custom_categories),
+            Err(e) => {
+                println!("{}", e.to_string());
+                Err(Error::ConfigurationError(e))
+            }
+        }
+    }
 }
 
 // -- Tests ----------------------------------------------------------------------------

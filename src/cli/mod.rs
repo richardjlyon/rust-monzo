@@ -25,8 +25,6 @@ pub enum Commands {
     },
     /// Account balances
     Balances {},
-    /// Beancount
-    Bean {},
     /// (Re)authorise the application
     Auth {},
     /// Reset the database (WARNING: This will delete all data!)
