@@ -3,18 +3,28 @@
 A rust command line application for downloading Monzo transaction history to
 an SQLITE database.
 
+Crates: [monzo-cli](https://crates.io/crates/monzo-cli)
+
 ## Installation
+
+As a command line app:
 
 ```bash
 cargo install --git https://github.com/richardjlyon/rust-monzo
 ```
 
+As a library:
+
+```bash
+cargo add monzo-cli
+```
+
 ## Usage
 
 ```rust
-> monzo
+> monzo-cli
 
-Usage: monzo <COMMAND>
+Usage: monzo-cli <COMMAND>
 
 Commands:
   update    Update transactions

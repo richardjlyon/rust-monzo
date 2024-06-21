@@ -1,7 +1,7 @@
 use clap::Parser;
 use colored::Colorize;
 
-use monzo::{
+use monzo_cli::{
     cli::{command, Cli, Commands},
     configuration::get_config,
     error::AppErrors as Error,
